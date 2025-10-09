@@ -1,6 +1,6 @@
 "use client";
 
-import { useEffect, useState } from "react";
+import {useState } from "react";
 import useSWR from "swr";
 import {
   Card,
@@ -21,7 +21,7 @@ import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
 import { OrderDetailDialog } from "@/components/orders/OrderDetailDialog";
 import { ProductionStatusBadge } from "@/components/orders/ProductionStatusBadge";
-import { toast } from "sonner";
+
 
 const fetcher = async (url: string) => {
   const res = await fetch(url);

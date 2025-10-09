@@ -114,17 +114,16 @@ export function UsersManager() {
         return;
       }
 
-      const dataToSend: any = {
+      const dataToSend: Partial<User> = {
         name: formData.name,
         email: formData.email,
         username: formData.username,
         role: formData.role,
         storeId: formData.storeId,
+        
       };
 
-      if (formData.password) {
-        dataToSend.password = formData.password;
-      }
+     
 
       const response = await fetch(`/api/users/${editingUser.id}`, {
         method: "PUT",
@@ -140,7 +139,8 @@ export function UsersManager() {
         const error = await response.json();
         toast.error(error.message || "Erro ao atualizar usuário");
       }
-    } catch (error) {
+    } catch (error: unknown) {
+      console.error("Error submitting user:", error);
       toast.error("Erro ao salvar usuário");
     } finally {
       setIsSubmitting(false);
@@ -164,7 +164,8 @@ export function UsersManager() {
         const error = await response.json();
         toast.error(error.message || "Erro ao deletar usuário");
       }
-    } catch (error) {
+    } catch (error: unknown) {
+      console.error("Error deleting user:", error);
       toast.error("Erro ao deletar usuário");
     }
   };
@@ -301,7 +302,7 @@ export function UsersManager() {
                   <Label htmlFor="role">Perfil *</Label>
                   <Select
                     value={formData.role}
-                    onValueChange={(value: any) =>
+                    onValueChange={(value: "manager" | "supervisor" | "owner") =>
                       setFormData({ ...formData, role: value })
                     }
                   >

@@ -15,7 +15,7 @@ interface User {
 interface AuthContextType {
   user: User | null;
   isLoading: boolean;
-  error: any;
+  error: unknown;
   logout: () => Promise<void>;
   mutate: () => void;
 }
@@ -48,7 +48,7 @@ export function AuthProvider({ children }: { children: ReactNode }) {
       await fetch("/api/auth/logout", { method: "POST" });
       mutate(null, false);
       router.push("/login");
-    } catch (error) {
+    } catch (error: unknown) {
       console.error("Logout error:", error);
     }
   };

@@ -5,11 +5,12 @@ import { NextResponse } from "next/server";
 
 export async function GET(
   req: Request,
-  { params }: { params: { id: string } }
+  { params }: { params: Promise<{ id: string }> }
 ) {
   try {
+    const { id } = await params;
     const order = await db.query.orders.findFirst({
-      where: eq(orders.id, params.id),
+      where: eq(orders.id, id),
       with: {
         manager: true,
         store: true,
@@ -27,7 +28,7 @@ export async function GET(
 
     return NextResponse.json(order);
   } catch (error) {
-    console.error(`Error fetching order ${params.id}:`, error);
+    console.error(`Error fetching order:`, error);
     return NextResponse.json(
       { message: "Internal server error" },
       { status: 500 }

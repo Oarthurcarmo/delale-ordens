@@ -12,11 +12,12 @@ const updateStoreSchema = z.object({
 
 export async function GET(
   req: Request,
-  { params }: { params: { id: string } }
+  { params }: { params: Promise<{ id: string }> }
 ) {
   try {
+    const { id } = await params;
     const store = await db.query.stores.findFirst({
-      where: eq(stores.id, parseInt(params.id)),
+      where: eq(stores.id, parseInt(id)),
     });
 
     if (!store) {
@@ -38,7 +39,7 @@ export async function GET(
 
 export async function PUT(
   req: Request,
-  { params }: { params: { id: string } }
+  { params }: { params: Promise<{ id: string }> }
 ) {
   const token = (await cookies()).get("session")?.value;
   if (!token) {
@@ -55,13 +56,14 @@ export async function PUT(
   }
 
   try {
+    const { id } = await params;
     const body = await req.json();
     const validatedData = updateStoreSchema.parse(body);
 
     const updatedStore = await db
       .update(stores)
       .set(validatedData)
-      .where(eq(stores.id, parseInt(params.id)))
+      .where(eq(stores.id, parseInt(id)))
       .returning();
 
     if (!updatedStore.length) {
@@ -78,7 +80,7 @@ export async function PUT(
   } catch (error) {
     if (error instanceof z.ZodError) {
       return NextResponse.json(
-        { message: "Dados inválidos", errors: error.errors },
+        { message: "Dados inválidos", errors: error.flatten().fieldErrors },
         { status: 400 }
       );
     }
@@ -92,7 +94,7 @@ export async function PUT(
 
 export async function DELETE(
   req: Request,
-  { params }: { params: { id: string } }
+  { params }: { params: Promise<{ id: string }> }
 ) {
   const token = (await cookies()).get("session")?.value;
   if (!token) {
@@ -109,9 +111,10 @@ export async function DELETE(
   }
 
   try {
+    const { id } = await params;
     const deletedStore = await db
       .delete(stores)
-      .where(eq(stores.id, parseInt(params.id)))
+      .where(eq(stores.id, parseInt(id)))
       .returning();
 
     if (!deletedStore.length) {

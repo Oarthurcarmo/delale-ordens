@@ -88,7 +88,8 @@ export function StoresManager() {
         const error = await response.json();
         toast.error(error.message || "Erro ao salvar loja");
       }
-    } catch (error) {
+    } catch (error: unknown) {
+      console.error("Error submitting store:", error);
       toast.error("Erro ao salvar loja");
     } finally {
       setIsSubmitting(false);
@@ -112,7 +113,8 @@ export function StoresManager() {
         const error = await response.json();
         toast.error(error.message || "Erro ao deletar loja");
       }
-    } catch (error) {
+    } catch (error: unknown) {
+      console.error("Error deleting store:", error);
       toast.error("Erro ao deletar loja");
     }
   };

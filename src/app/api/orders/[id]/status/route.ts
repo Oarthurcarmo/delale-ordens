@@ -12,7 +12,7 @@ const updateStatusSchema = z.object({
 
 export async function PATCH(
   req: Request,
-  { params }: { params: { id: string } }
+  { params }: { params: Promise<{ id: string }> }
 ) {
   const token = (await cookies()).get("session")?.value;
   if (!token) {
@@ -30,6 +30,7 @@ export async function PATCH(
   }
 
   try {
+    const { id } = await params;
     const body = await req.json();
     const { status } = updateStatusSchema.parse(body);
 
@@ -39,7 +40,7 @@ export async function PATCH(
         status,
         updatedAt: new Date(),
       })
-      .where(eq(orders.id, params.id))
+      .where(eq(orders.id, id))
       .returning();
 
     if (!updatedOrder.length) {
@@ -56,7 +57,7 @@ export async function PATCH(
   } catch (error) {
     if (error instanceof z.ZodError) {
       return NextResponse.json(
-        { message: "Dados inválidos", errors: error.errors },
+        { message: "Dados inválidos", errors: error.flatten().fieldErrors },
         { status: 400 }
       );
     }

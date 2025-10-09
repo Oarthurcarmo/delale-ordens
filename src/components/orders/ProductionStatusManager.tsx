@@ -159,7 +159,7 @@ export function ProductionStatusManager({
         {/* Atualizar Status */}
         <div className="space-y-3">
           <label className="text-sm font-medium">Alterar Status</label>
-          <Select value={selectedStatus} onValueChange={setSelectedStatus}>
+          <Select value={selectedStatus} onValueChange={(value) => setSelectedStatus(value as typeof selectedStatus)}>
             <SelectTrigger className="w-full">
               <SelectValue />
             </SelectTrigger>

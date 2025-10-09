@@ -34,7 +34,7 @@ export async function GET(req: Request) {
       // Supervisor e Dono veem todas as solicitações
       if (status) {
         requests = await db.query.editRequests.findMany({
-          where: eq(editRequests.status, status as any),
+          where: eq(editRequests.status, status as typeof editRequests.status.enumValues[number]),
           with: {
             order: {
               with: {

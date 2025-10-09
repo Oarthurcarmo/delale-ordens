@@ -21,7 +21,7 @@ export async function GET() {
   }
 
   const user = await db.query.users.findFirst({
-    where: (users, { eq }) => eq(users.id, parseInt(payload.sub!)),
+    where: (users, { eq }) => eq(users.id, parseInt(payload.sub as string)),
   });
 
   if (!user) {
@@ -64,7 +64,7 @@ export async function GET() {
 
 // POST new Order
 export async function POST(req: Request) {
-  const token = cookies().get("session")?.value;
+  const token = (await cookies()).get("session")?.value;
   if (!token) {
     return NextResponse.json({ message: "Unauthorized" }, { status: 401 });
   }
@@ -79,7 +79,7 @@ export async function POST(req: Request) {
 
     if (!parsedData.success) {
       return NextResponse.json(
-        { errors: parsedData.error.errors },
+        { errors: parsedData.error.flatten().fieldErrors },
         { status: 400 }
       );
     }
@@ -106,7 +106,7 @@ export async function POST(req: Request) {
 
     // Buscar informações para o e-mail
     const manager = await db.query.users.findFirst({
-      where: (users, { eq }) => eq(users.id, parseInt(payload.sub)),
+      where: (users, { eq }) => eq(users.id, parseInt(payload.sub as string)),
     });
 
     const store = await db.query.stores.findFirst({

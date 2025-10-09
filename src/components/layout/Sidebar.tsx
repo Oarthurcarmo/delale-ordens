@@ -42,7 +42,7 @@ export function Sidebar() {
     );
   }
 
-  let links = [];
+  let links: { href: string; label: string; icon: React.ElementType }[] = [];
   if (user?.role === "manager") {
     links = managerLinks;
   } else if (user?.role === "supervisor") {
@@ -58,7 +58,7 @@ export function Sidebar() {
           <h2 className="text-xl font-bold">Menu</h2>
         </div>
         <nav className="flex-1 p-4 space-y-2">
-          {links.map((link) => (
+          {links.map((link: { href: string; label: string; icon: React.ElementType }) => (
             <Link
               key={link.href}
               href={link.href}

@@ -28,6 +28,7 @@ interface SalesData {
   total: number;
   productName: string;
   productId: number;
+  label: string;
 }
 
 interface TopProduct {
@@ -58,7 +59,7 @@ export function SalesHistoryChart() {
 
   useEffect(() => {
     fetchTopProducts();
-  }, [selectedYear]);
+  },);
 
   const fetchTopProducts = async () => {
     try {
@@ -147,7 +148,7 @@ export function ProductSalesChart({
 
   useEffect(() => {
     fetchProductSales();
-  }, [productId, startYear, endYear]);
+  },);
 
   const fetchProductSales = async () => {
     try {
@@ -165,7 +166,7 @@ export function ProductSalesChart({
   };
 
   // Agrupar dados por ano
-  const chartData = salesData.reduce((acc: any[], item) => {
+  const chartData = salesData.reduce((acc: SalesData[], item) => {
     const existingMonth = acc.find(
       (d) => d.month === item.month && d.year === item.year
     );
@@ -173,6 +174,9 @@ export function ProductSalesChart({
       existingMonth.total += item.total;
     } else {
       acc.push({
+        id: 0,
+        productName: "",
+        productId: 0,
         month: item.month,
         year: item.year,
         total: item.total,
@@ -240,12 +244,20 @@ interface SalesSummaryProps {
 }
 
 export function SalesSummary({ year }: SalesSummaryProps) {
-  const [summary, setSummary] = useState<any[]>([]);
+  const [summary, setSummary] = useState<SummaryData[]>([]);
+  interface SummaryData {
+    productId: number;
+    productName: string;
+    totalSales: number;
+    avgMonthlySales: number;
+    minSales: number;
+    maxSales: number;
+  }
   const [loading, setLoading] = useState(true);
 
   useEffect(() => {
     fetchSummary();
-  }, [year]);
+  }, );
 
   const fetchSummary = async () => {
     try {

@@ -209,7 +209,8 @@ export function SupervisorDashboard() {
       } else {
         toast.error("Erro ao processar solicitação");
       }
-    } catch (error) {
+    } catch (error: unknown) {
+  
       toast.error("Erro ao processar solicitação");
     }
   };

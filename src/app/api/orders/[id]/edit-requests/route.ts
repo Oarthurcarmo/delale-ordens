@@ -7,9 +7,9 @@ import { createEditRequestSchema } from "@/server/validators";
 
 export async function POST(
   req: Request,
-  { params }: { params: { id: string } }
+  { params }: { params: Promise<{ id: string }> }
 ) {
-  const token = cookies().get("session")?.value;
+  const token = (await cookies()).get("session")?.value;
   if (!token) {
     return NextResponse.json({ message: "Unauthorized" }, { status: 401 });
   }
@@ -19,12 +19,13 @@ export async function POST(
   }
 
   try {
+    const { id } = await params;
     const body = await req.json();
     const parsedData = createEditRequestSchema.safeParse(body);
 
     if (!parsedData.success) {
       return NextResponse.json(
-        { errors: parsedData.error.errors },
+        { errors: parsedData.error.flatten().fieldErrors },
         { status: 400 }
       );
     }
@@ -34,7 +35,7 @@ export async function POST(
     const newRequest = await db
       .insert(editRequests)
       .values({
-        orderId: params.id,
+        orderId: id,
         requesterId: parseInt(payload.sub),
         description,
       })

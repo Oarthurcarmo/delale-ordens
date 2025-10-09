@@ -55,7 +55,8 @@ export function EditRequestForm({
         const error = await response.json();
         toast.error(error.message || "Erro ao enviar solicitação");
       }
-    } catch (error) {
+    } catch (error: unknown) {
+      console.error("Error submitting edit request:", error);
       toast.error("Erro ao enviar solicitação");
     } finally {
       setIsSubmitting(false);

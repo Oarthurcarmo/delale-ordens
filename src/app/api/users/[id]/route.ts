@@ -18,7 +18,7 @@ const updateUserSchema = z.object({
 
 export async function GET(
   req: Request,
-  { params }: { params: { id: string } }
+  { params }: { params: Promise<{ id: string }> }
 ) {
   const token = (await cookies()).get("session")?.value;
   if (!token) {
@@ -35,8 +35,9 @@ export async function GET(
   }
 
   try {
+    const { id } = await params;
     const user = await db.query.users.findFirst({
-      where: eq(users.id, parseInt(params.id)),
+      where: eq(users.id, parseInt(id)),
       columns: {
         id: true,
         name: true,
@@ -70,7 +71,7 @@ export async function GET(
 
 export async function PUT(
   req: Request,
-  { params }: { params: { id: string } }
+  { params }: { params: Promise<{ id: string }> }
 ) {
   const token = (await cookies()).get("session")?.value;
   if (!token) {
@@ -87,20 +88,21 @@ export async function PUT(
   }
 
   try {
+    const { id } = await params;
     const body = await req.json();
     const validatedData = updateUserSchema.parse(body);
 
     // Se senha foi fornecida, criptografar
-    const updateData: any = { ...validatedData };
+    const updateData: Partial<typeof users.$inferSelect> = { ...validatedData };
     if (validatedData.password) {
       updateData.passwordHash = await bcrypt.hash(validatedData.password, 10);
-      delete updateData.password;
+      delete updateData.passwordHash;
     }
 
     const updatedUser = await db
       .update(users)
       .set(updateData)
-      .where(eq(users.id, parseInt(params.id)))
+      .where(eq(users.id, parseInt(id)))
       .returning({
         id: users.id,
         name: users.name,
@@ -124,7 +126,7 @@ export async function PUT(
   } catch (error) {
     if (error instanceof z.ZodError) {
       return NextResponse.json(
-        { message: "Dados inválidos", errors: error.errors },
+        { message: "Dados inválidos", errors: error.flatten().fieldErrors },
         { status: 400 }
       );
     }
@@ -138,7 +140,7 @@ export async function PUT(
 
 export async function DELETE(
   req: Request,
-  { params }: { params: { id: string } }
+  { params }: { params: Promise<{ id: string }> }
 ) {
   const token = (await cookies()).get("session")?.value;
   if (!token) {
@@ -154,18 +156,20 @@ export async function DELETE(
     return NextResponse.json({ message: "Forbidden" }, { status: 403 });
   }
 
-  // Não permitir deletar a si mesmo
-  if (parseInt(params.id) === parseInt(payload.sub)) {
-    return NextResponse.json(
-      { message: "Você não pode deletar seu próprio usuário" },
-      { status: 400 }
-    );
-  }
-
   try {
+    const { id } = await params;
+
+    // Não permitir deletar a si mesmo
+    if (parseInt(id) === parseInt(payload.sub)) {
+      return NextResponse.json(
+        { message: "Você não pode deletar seu próprio usuário" },
+        { status: 400 }
+      );
+    }
+
     const deletedUser = await db
       .delete(users)
-      .where(eq(users.id, parseInt(params.id)))
+      .where(eq(users.id, parseInt(id)))
       .returning();
 
     if (!deletedUser.length) {

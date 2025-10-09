@@ -12,7 +12,7 @@ const createStoreSchema = z.object({
 export async function GET() {
   try {
     const allStores = await db.query.stores.findMany({
-      orderBy: (stores, { asc }) => [stores.name],
+      orderBy: (stores, { asc }) => [asc(stores.name)],
     });
     return NextResponse.json(allStores);
   } catch (error) {
@@ -56,8 +56,8 @@ export async function POST(req: Request) {
   } catch (error) {
     if (error instanceof z.ZodError) {
       return NextResponse.json(
-        { message: "Dados inválidos", errors: error.errors },
-        { status: 400 }
+        { message: "Dados inválidos", errors: error.flatten().fieldErrors },
+        { status: 400 } 
       );
     }
     console.error("Error creating store:", error);

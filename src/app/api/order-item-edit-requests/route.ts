@@ -4,6 +4,7 @@ import { db } from "@/server/db";
 import { orderItemEditRequests, orderItems } from "@/server/schema";
 import { eq, and } from "drizzle-orm";
 import { verifyToken } from "@/server/auth";
+import { requestStatus } from "@/server/schema";
 
 // GET - Listar solicitações de edição
 export async function GET(req: NextRequest) {
@@ -30,7 +31,7 @@ export async function GET(req: NextRequest) {
     const status = searchParams.get("status");
     const orderId = searchParams.get("orderId");
 
-    let query = db.query.orderItemEditRequests.findMany({
+    const query = db.query.orderItemEditRequests.findMany({
       with: {
         orderItem: {
           with: {
@@ -54,7 +55,7 @@ export async function GET(req: NextRequest) {
     if (status || orderId) {
       const where = [];
       if (status) {
-        where.push(eq(orderItemEditRequests.status, status as any));
+        where.push(eq(orderItemEditRequests.status, status as typeof requestStatus.enumValues[number]));
       }
       if (orderId) {
         where.push(eq(orderItemEditRequests.orderId, orderId));

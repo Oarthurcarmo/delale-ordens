@@ -22,11 +22,10 @@ export async function GET(req: Request) {
       });
       return NextResponse.json(allProducts);
     }
-
     // Retorna apenas produtos Classe A (para criação de pedidos)
     const classAProducts = await db.query.products.findMany({
       where: (products, { eq }) => eq(products.isClassA, true),
-      orderBy: (products, { asc }) => [products.name],
+      orderBy: (products, { asc }) => [asc(products.name)],
     });
     return NextResponse.json(classAProducts);
   } catch (error) {
@@ -73,7 +72,7 @@ export async function POST(req: Request) {
   } catch (error) {
     if (error instanceof z.ZodError) {
       return NextResponse.json(
-        { message: "Dados inválidos", errors: error.errors },
+        { message: "Dados inválidos", errors: error.flatten().fieldErrors },
         { status: 400 }
       );
     }

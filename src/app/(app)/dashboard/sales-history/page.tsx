@@ -1,7 +1,7 @@
 import { Suspense } from "react";
 import {
   SalesHistoryChart,
-  ProductSalesChart,
+
   SalesSummary,
 } from "@/components/dashboards/SalesHistoryChart";
 

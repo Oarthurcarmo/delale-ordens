@@ -11,7 +11,7 @@ export async function POST(req: Request) {
 
     if (!parsedData.success) {
       return NextResponse.json(
-        { message: "Invalid input", errors: parsedData.error.errors },
+        { message: "Invalid input", errors: parsedData.error.flatten().fieldErrors },
         { status: 400 }
       );
     }

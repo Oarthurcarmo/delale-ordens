@@ -206,7 +206,7 @@ export function OwnerDashboard() {
                     outerRadius={100}
                     fill="#8884d8"
                     dataKey="totalQuantity"
-                    label={(entry) => entry.productName}
+                    label={(entry) => entry.productName as string}
                   >
                     {data.topProducts.map((entry, index) => (
                       <Cell

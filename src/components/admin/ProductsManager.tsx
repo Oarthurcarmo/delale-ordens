@@ -93,7 +93,8 @@ export function ProductsManager() {
         const error = await response.json();
         toast.error(error.message || "Erro ao salvar produto");
       }
-    } catch (error) {
+    } catch (error: unknown) {
+      console.error("Error submitting product:", error);
       toast.error("Erro ao salvar produto");
     } finally {
       setIsSubmitting(false);
@@ -119,7 +120,8 @@ export function ProductsManager() {
         const error = await response.json();
         toast.error(error.message || "Erro ao deletar produto");
       }
-    } catch (error) {
+    } catch (error: unknown) {
+      console.error("Error deleting product:", error);
       toast.error("Erro ao deletar produto");
     }
   };

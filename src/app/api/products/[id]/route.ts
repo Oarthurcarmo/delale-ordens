@@ -14,11 +14,12 @@ const updateProductSchema = z.object({
 // GET single product
 export async function GET(
   req: Request,
-  { params }: { params: { id: string } }
+  { params }: { params: Promise<{ id: string }> }
 ) {
   try {
+    const { id } = await params;
     const product = await db.query.products.findFirst({
-      where: eq(products.id, parseInt(params.id)),
+      where: eq(products.id, parseInt(id)),
     });
 
     if (!product) {
@@ -41,7 +42,7 @@ export async function GET(
 // UPDATE product
 export async function PUT(
   req: Request,
-  { params }: { params: { id: string } }
+  { params }: { params: Promise<{ id: string }> }
 ) {
   const token = (await cookies()).get("session")?.value;
   if (!token) {
@@ -59,13 +60,14 @@ export async function PUT(
   }
 
   try {
+    const { id } = await params;
     const body = await req.json();
     const validatedData = updateProductSchema.parse(body);
 
     const updatedProduct = await db
       .update(products)
       .set(validatedData)
-      .where(eq(products.id, parseInt(params.id)))
+      .where(eq(products.id, parseInt(id)))
       .returning();
 
     if (!updatedProduct.length) {
@@ -82,7 +84,7 @@ export async function PUT(
   } catch (error) {
     if (error instanceof z.ZodError) {
       return NextResponse.json(
-        { message: "Dados inválidos", errors: error.errors },
+        { message: "Dados inválidos", errors: error.flatten().fieldErrors },
         { status: 400 }
       );
     }
@@ -97,7 +99,7 @@ export async function PUT(
 // DELETE product
 export async function DELETE(
   req: Request,
-  { params }: { params: { id: string } }
+  { params }: { params: Promise<{ id: string }> }
 ) {
   const token = (await cookies()).get("session")?.value;
   if (!token) {
@@ -115,9 +117,10 @@ export async function DELETE(
   }
 
   try {
+    const { id } = await params;
     const deletedProduct = await db
       .delete(products)
-      .where(eq(products.id, parseInt(params.id)))
+      .where(eq(products.id, parseInt(id)))
       .returning();
 
     if (!deletedProduct.length) {

@@ -9,9 +9,9 @@ import { sendEditRequestDecisionNotification } from "@/server/email";
 
 export async function PATCH(
   req: Request,
-  { params }: { params: { id: string } }
+  { params }: { params: Promise<{ id: string }> }
 ) {
-  const token = cookies().get("session")?.value;
+  const token = (await cookies()).get("session")?.value;
   if (!token) {
     return NextResponse.json({ message: "Unauthorized" }, { status: 401 });
   }
@@ -21,12 +21,13 @@ export async function PATCH(
   }
 
   try {
+    const { id } = await params;
     const body = await req.json();
     const parsedData = updateEditRequestSchema.safeParse(body);
 
     if (!parsedData.success) {
       return NextResponse.json(
-        { errors: parsedData.error.errors },
+        { errors: parsedData.error.flatten().fieldErrors },
         { status: 400 }
       );
     }
@@ -40,12 +41,12 @@ export async function PATCH(
         decidedBy: parseInt(payload.sub),
         decidedAt: new Date(),
       })
-      .where(eq(editRequests.id, parseInt(params.id)))
+      .where(eq(editRequests.id, parseInt(id)))
       .returning();
 
     // Buscar informações para enviar e-mail
     const editRequest = await db.query.editRequests.findFirst({
-      where: eq(editRequests.id, parseInt(params.id)),
+      where: eq(editRequests.id, parseInt(id)),
       with: {
         order: true,
         requester: true,

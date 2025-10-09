@@ -1,11 +1,10 @@
 "use client";
 
 import { useState } from "react";
-import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
-import { ProductsManager } from "./ProductsManager";
-import { StoresManager } from "./StoresManager";
-import { UsersManager } from "./UsersManager";
+import { ProductsManager } from "@/components/admin/ProductsManager";
+import { StoresManager } from "@/components/admin/StoresManager";
+import { UsersManager } from "@/components/admin/UsersManager";
 import { Package, Store, Users } from "lucide-react";
 
 export function AdminPanel() {
