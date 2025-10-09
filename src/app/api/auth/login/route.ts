@@ -1,9 +1,11 @@
 import { db } from "@/server/db";
 import { loginSchema } from "@/server/validators";
-import { NextResponse } from "next/server";
 import bcrypt from "bcryptjs";
 import { signToken } from "@/server/auth";
 import { cookies } from "next/headers";
+import { corsResponse, handleOptions } from "@/lib/cors";
+
+export const OPTIONS = handleOptions;
 
 export async function POST(req: Request) {
   try {
@@ -11,7 +13,7 @@ export async function POST(req: Request) {
     const parsedData = loginSchema.safeParse(body);
 
     if (!parsedData.success) {
-      return NextResponse.json(
+      return corsResponse(
         { message: "Dados inválidos", errors: parsedData.error.flatten() },
         { status: 400 }
       );
@@ -30,7 +32,7 @@ export async function POST(req: Request) {
     });
 
     if (!user) {
-      return NextResponse.json(
+      return corsResponse(
         { message: "Credenciais inválidas" },
         { status: 401 }
       );
@@ -42,7 +44,7 @@ export async function POST(req: Request) {
     );
 
     if (!isPasswordValid) {
-      return NextResponse.json(
+      return corsResponse(
         { message: "Credenciais inválidas" },
         { status: 401 }
       );
@@ -54,13 +56,13 @@ export async function POST(req: Request) {
       httpOnly: true,
       secure: process.env.NODE_ENV === "production",
       path: "/",
-      sameSite: "strict",
+      sameSite: "lax",
     });
 
-    return NextResponse.json({ message: "Login realizado com sucesso" });
+    return corsResponse({ message: "Login realizado com sucesso" });
   } catch (error) {
     console.error("Login error:", error);
-    return NextResponse.json(
+    return corsResponse(
       { message: "Erro interno do servidor" },
       { status: 500 }
     );

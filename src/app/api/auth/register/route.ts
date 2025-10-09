@@ -1,8 +1,10 @@
 import { db } from "@/server/db";
 import { users } from "@/server/schema";
 import { registerSchema } from "@/server/validators";
-import { NextResponse } from "next/server";
 import bcrypt from "bcryptjs";
+import { corsResponse, handleOptions } from "@/lib/cors";
+
+export const OPTIONS = handleOptions;
 
 export async function POST(req: Request) {
   try {
@@ -10,7 +12,7 @@ export async function POST(req: Request) {
     const parsedData = registerSchema.safeParse(body);
 
     if (!parsedData.success) {
-      return NextResponse.json(
+      return corsResponse(
         { message: "Invalid input", errors: parsedData.error.flatten().fieldErrors },
         { status: 400 }
       );
@@ -23,7 +25,7 @@ export async function POST(req: Request) {
     });
 
     if (existingUser) {
-      return NextResponse.json(
+      return corsResponse(
         { message: "Username already exists" },
         { status: 409 }
       );
@@ -40,13 +42,13 @@ export async function POST(req: Request) {
       storeId,
     });
 
-    return NextResponse.json(
+    return corsResponse(
       { message: "User created successfully" },
       { status: 201 }
     );
   } catch (error) {
     console.error("Registration error:", error);
-    return NextResponse.json(
+    return corsResponse(
       { message: "Internal server error" },
       { status: 500 }
     );

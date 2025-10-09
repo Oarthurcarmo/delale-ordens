@@ -1,7 +1,9 @@
 import { cookies } from "next/headers";
-import { NextResponse } from "next/server";
+import { corsResponse, handleOptions } from "@/lib/cors";
+
+export const OPTIONS = handleOptions;
 
 export async function POST() {
   (await cookies()).delete("session");
-  return NextResponse.json({ message: "Logout realizado com sucesso" });
+  return corsResponse({ message: "Logout realizado com sucesso" });
 }
