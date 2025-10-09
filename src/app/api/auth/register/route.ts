@@ -13,7 +13,10 @@ export async function POST(req: Request) {
 
     if (!parsedData.success) {
       return corsResponse(
-        { message: "Invalid input", errors: parsedData.error.flatten().fieldErrors },
+        {
+          message: "Invalid input",
+          errors: parsedData.error.flatten().fieldErrors,
+        },
         { status: 400 }
       );
     }
@@ -48,9 +51,6 @@ export async function POST(req: Request) {
     );
   } catch (error) {
     console.error("Registration error:", error);
-    return corsResponse(
-      { message: "Internal server error" },
-      { status: 500 }
-    );
+    return corsResponse({ message: "Internal server error" }, { status: 500 });
   }
 }

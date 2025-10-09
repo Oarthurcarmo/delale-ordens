@@ -21,10 +21,7 @@ export function withCors(response: NextResponse): NextResponse {
 /**
  * Retorna uma resposta JSON com headers CORS
  */
-export function corsResponse(
-  data: unknown,
-  init?: ResponseInit
-): NextResponse {
+export function corsResponse(data: unknown, init?: ResponseInit): NextResponse {
   return NextResponse.json(data, {
     ...init,
     headers: {
@@ -43,4 +40,3 @@ export async function handleOptions() {
     headers: corsHeaders,
   });
 }
-
