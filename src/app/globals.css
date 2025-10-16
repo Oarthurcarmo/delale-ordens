@@ -45,86 +45,117 @@
 
 :root {
   --radius: 0.625rem;
+  
+  /* Cores Base */
+  --background: #faf9fb; /* Um branco levemente roxo para suavidade */
+  --foreground: #0D041F;
+  
+  /* Cards e Popovers */
   --card: #ffffff;
-  --card-foreground: #1a1a1a;
+  --card-foreground: #0D041F;
   --popover: #ffffff;
-  --popover-foreground: #1a1a1a;
-  --primary: #ff6d6d;
+  --popover-foreground: #0D041F;
+  
+  /* Primário */
+  --primary: #FD9FC6; /* Carnation Pink */
   --primary-foreground: #ffffff;
-  --secondary: #fff1f1;
-  --secondary-foreground: #1a1a1a;
-  --muted: #fff1f1;
-  --muted-foreground: #6b7280;
-  --accent: #ffe1e1;
-  --accent-foreground: #1a1a1a;
+  
+  /* Secundário */
+  --secondary: #F3CCD7; /* Mimi Pink */
+  --secondary-foreground: #0D041F;
+  
+  /* Mudo e Acento */
+  --muted: #f5f3f7;
+  --muted-foreground: #675777;
+  --accent: #e8e5eb;
+  --accent-foreground: #0D041F;
+  
+  /* Outros */
   --destructive: #e51d1d;
-  --border: #e5e7eb;
-  --input: #e5e7eb;
-  --ring: #ff6d6d;
-  --chart-1: #ff6d6d;
-  --chart-2: #ffa0a0;
-  --chart-3: #ffc7c7;
-  --chart-4: #f83b3b;
-  --chart-5: #e51d1d;
+  --border: #e8e5eb;
+  --input: #e8e5eb;
+  --ring: #675777;
+
+  /* Gráficos */
+  --chart-1: #FD9FC6; /* Carnation Pink */
+  --chart-2: #675777; /* Chinese Violet */
+  --chart-3: #F3CCD7; /* Mimi Pink */
+  --chart-4: #8f81a8;
+  --chart-5: #4e405a;
+
+  /* Sidebar (Claro) */
   --sidebar: #ffffff;
-  --sidebar-foreground: #1a1a1a;
-  --sidebar-primary: #ff6d6d;
+  --sidebar-foreground: #0D041F;
+  --sidebar-primary: #675777;
   --sidebar-primary-foreground: #ffffff;
-  --sidebar-accent: #fff1f1;
-  --sidebar-accent-foreground: #1a1a1a;
-  --sidebar-border: #e5e7eb;
-  --sidebar-ring: #ff6d6d;
-  --background: #ffffff;
-  --foreground: #1a1a1a;
+  --sidebar-accent: #f5f3f7;
+  --sidebar-accent-foreground: #0D041F;
+  --sidebar-border: #e8e5eb;
+  --sidebar-ring: #675777;
 
-
-  --color-carnation-50: #fff1f1;
---color-carnation-100: #ffe1e1;
---color-carnation-200: #ffc7c7;
---color-carnation-300: #ffa0a0;
---color-carnation-400: #ff6d6d;
---color-carnation-500: #f83b3b;
---color-carnation-600: #e51d1d;
---color-carnation-700: #c11414;
---color-carnation-800: #a01414;
---color-carnation-900: #841818;
---color-carnation-950: #480707;
-
-
+  /* Rampa de Cores (Violet) */
+  --color-violet-50: #f5f3f7;
+  --color-violet-100: #e8e5eb;
+  --color-violet-200: #d1cbdd;
+  --color-violet-300: #b2a7c5;
+  --color-violet-400: #8f81a8;
+  --color-violet-500: #675777;
+  --color-violet-600: #5d4d6b;
+  --color-violet-700: #4e405a;
+  --color-violet-800: #41354b;
+  --color-violet-900: #352c3d;
+  --color-violet-950: #221c27;
 }
 
 .dark {
-  --background: #1a1a1a;
-  --foreground: #ffffff;
-  --card: #2a2a2a;
-  --card-foreground: #ffffff;
-  --popover: #2a2a2a;
-  --popover-foreground: #ffffff;
-  --primary: #ff6d6d;
-  --primary-foreground: #ffffff;
-  --secondary: #3a1a1a;
-  --secondary-foreground: #ffffff;
-  --muted: #3a1a1a;
-  --muted-foreground: #9ca3af;
-  --accent: #4a1a1a;
-  --accent-foreground: #ffffff;
-  --destructive: #e51d1d;
-  --border: #374151;
-  --input: #374151;
-  --ring: #ff6d6d;
-  --chart-1: #ff6d6d;
-  --chart-2: #ffa0a0;
-  --chart-3: #ffc7c7;
-  --chart-4: #f83b3b;
-  --chart-5: #e51d1d;
-  --sidebar: #2a2a2a;
-  --sidebar-foreground: #ffffff;
-  --sidebar-primary: #ff6d6d;
-  --sidebar-primary-foreground: #ffffff;
-  --sidebar-accent: #3a1a1a;
-  --sidebar-accent-foreground: #ffffff;
-  --sidebar-border: #374151;
-  --sidebar-ring: #ff6d6d;
+  /* Fundo principal: O cinza/preto profundo da imagem */
+  --background: #111216; 
+  --foreground: #e0e0e0; /* Cinza claro para texto principal */
+
+  /* Cards e Popovers: Ligeiramente mais claros que o fundo, com profundidade */
+  --card: #1C1D23; 
+  --card-foreground: #e0e0e0;
+  --popover: #1C1D23;
+  --popover-foreground: #e0e0e0;
+
+  /* Primário: Usando o Carnation Pink da sua paleta para destaque forte */
+  --primary: #FD9FC6; /* Carnation Pink */
+  --primary-foreground: #111216; /* Fundo principal para texto no botão primário */
+
+  /* Secundário: Um roxo mais suave da sua paleta, ou um cinza sutil */
+  --secondary: #221c27; /* Darker tone from your palette */
+  --secondary-foreground: #F3CCD7; /* Mimi Pink para contraste */
+
+  /* Mudo e Acento: Tons para textos secundários e elementos de interface */
+  --muted: #282A30; /* Um tom escuro para áreas mutadas */
+  --muted-foreground: #8F9094; /* Cinza médio para textos secundários */
+  --accent: #282A30; /* Acento similar ao mutado */
+  --accent-foreground: #F3CCD7; /* Mimi Pink para acento */
+
+  /* Destrutivo: Mantido em vermelho para clareza */
+  --destructive: #e51d1d; 
+
+  /* Bordas e Input: Muito sutis, quase transparentes */
+  --border: #282A30; /* Bordas suaves */
+  --input: #282A30; /* Fundo para campos de input */
+  --ring: #FD9FC6; /* Cor do foco/anel, usando o pink */
+  
+  /* Gráficos: Cores da sua paleta, com o pink em destaque */
+  --chart-1: #FD9FC6; /* Carnation Pink */
+  --chart-2: #675777; /* Chinese Violet */
+  --chart-3: #F3CCD7; /* Mimi Pink */
+  --chart-4: #8f81a8; /* Um tom de violeta mais claro */
+  --chart-5: #4e405a; /* Um tom de violeta mais escuro */
+  
+  /* Sidebar: Similar aos cards, para coesão */
+  --sidebar: #1C1D23; 
+  --sidebar-foreground: #e0e0e0;
+  --sidebar-primary: #FD9FC6;
+  --sidebar-primary-foreground: #111216;
+  --sidebar-accent: #282A30;
+  --sidebar-accent-foreground: #F3CCD7;
+  --sidebar-border: #282A30;
+  --sidebar-ring: #FD9FC6;
 }
 
 @layer base {
