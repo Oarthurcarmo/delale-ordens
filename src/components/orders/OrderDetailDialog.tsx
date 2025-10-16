@@ -19,6 +19,7 @@ import {
 import { Badge } from "@/components/ui/badge";
 import { useState } from "react";
 import { EditRequestForm } from "./EditRequestForm";
+import { OrderItemsEditRequestDialog } from "./OrderItemsEditRequestDialog";
 import { toast } from "sonner";
 
 interface OrderItem {
@@ -28,7 +29,7 @@ interface OrderItem {
   };
   stock: number;
   quantity: number;
-  type: string;
+  type: "Vitrine" | "Encomenda";
   clientName?: string;
   deliveryDate?: string;
 }
@@ -60,6 +61,7 @@ export function OrderDetailDialog({
   canRequestEdit = false,
 }: OrderDetailDialogProps) {
   const [showEditRequestForm, setShowEditRequestForm] = useState(false);
+  const [showItemsEditDialog, setShowItemsEditDialog] = useState(false);
 
   if (!order) return null;
 
@@ -70,9 +72,17 @@ export function OrderDetailDialog({
     toast.success("Solicitação de edição enviada com sucesso!");
   };
 
+  const handleItemsEditSuccess = () => {
+    setShowItemsEditDialog(false);
+    toast.success("Solicitação de edição de itens enviada com sucesso!");
+  };
+
   return (
     <>
-      <Dialog open={open && !showEditRequestForm} onOpenChange={onOpenChange}>
+      <Dialog
+        open={open && !showEditRequestForm && !showItemsEditDialog}
+        onOpenChange={onOpenChange}
+      >
         <DialogContent className="max-w-4xl!">
           <DialogHeader>
             <DialogTitle className="text-2xl">Detalhes do Pedido</DialogTitle>
@@ -170,22 +180,38 @@ export function OrderDetailDialog({
               Fechar
             </Button>
             {canRequestEdit && (
-              <Button onClick={() => setShowEditRequestForm(true)}>
-                Solicitar Edição
-              </Button>
+              <div className="flex gap-2">
+                <Button
+                  variant="outline"
+                  onClick={() => setShowItemsEditDialog(true)}
+                >
+                  Editar Itens
+                </Button>
+                <Button onClick={() => setShowEditRequestForm(true)}>
+                  Solicitar Edição
+                </Button>
+              </div>
             )}
           </DialogFooter>
         </DialogContent>
       </Dialog>
 
       {canRequestEdit && (
-        <EditRequestForm
-          open={showEditRequestForm}
-          onOpenChange={setShowEditRequestForm}
-          orderId={order.id}
-          orderCode={order.code}
-          onSuccess={handleEditRequestSuccess}
-        />
+        <>
+          <EditRequestForm
+            open={showEditRequestForm}
+            onOpenChange={setShowEditRequestForm}
+            orderId={order.id}
+            orderCode={order.code}
+            onSuccess={handleEditRequestSuccess}
+          />
+          <OrderItemsEditRequestDialog
+            open={showItemsEditDialog}
+            onOpenChange={setShowItemsEditDialog}
+            order={order}
+            onSuccess={handleItemsEditSuccess}
+          />
+        </>
       )}
     </>
   );
