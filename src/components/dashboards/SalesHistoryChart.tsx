@@ -1,6 +1,6 @@
 "use client";
 
-import { useState, useEffect } from "react";
+import { useState, useEffect, useCallback } from "react";
 import {
   Card,
   CardContent,
@@ -57,11 +57,7 @@ export function SalesHistoryChart() {
   const [topProducts, setTopProducts] = useState<TopProduct[]>([]);
   const [loading, setLoading] = useState(true);
 
-  useEffect(() => {
-    fetchTopProducts();
-  },);
-
-  const fetchTopProducts = async () => {
+  const fetchTopProducts = useCallback(async () => {
     try {
       setLoading(true);
       const response = await fetch(`/api/sales-history?year=${selectedYear}`);
@@ -72,7 +68,11 @@ export function SalesHistoryChart() {
     } finally {
       setLoading(false);
     }
-  };
+  }, [selectedYear]);
+
+  useEffect(() => {
+    fetchTopProducts();
+  }, [fetchTopProducts]);
 
   return (
     <div className="space-y-6">
@@ -146,11 +146,7 @@ export function ProductSalesChart({
   const [salesData, setSalesData] = useState<SalesData[]>([]);
   const [loading, setLoading] = useState(true);
 
-  useEffect(() => {
-    fetchProductSales();
-  },);
-
-  const fetchProductSales = async () => {
+  const fetchProductSales = useCallback(async () => {
     try {
       setLoading(true);
       const response = await fetch(
@@ -163,7 +159,11 @@ export function ProductSalesChart({
     } finally {
       setLoading(false);
     }
-  };
+  }, [productId, startYear, endYear]);
+
+  useEffect(() => {
+    fetchProductSales();
+  }, [fetchProductSales]);
 
   // Agrupar dados por ano
   const chartData = salesData.reduce((acc: SalesData[], item) => {
@@ -243,23 +243,20 @@ interface SalesSummaryProps {
   year?: number;
 }
 
+interface SummaryData {
+  productId: number;
+  productName: string;
+  totalSales: number;
+  avgMonthlySales: number;
+  minSales: number;
+  maxSales: number;
+}
+
 export function SalesSummary({ year }: SalesSummaryProps) {
   const [summary, setSummary] = useState<SummaryData[]>([]);
-  interface SummaryData {
-    productId: number;
-    productName: string;
-    totalSales: number;
-    avgMonthlySales: number;
-    minSales: number;
-    maxSales: number;
-  }
   const [loading, setLoading] = useState(true);
 
-  useEffect(() => {
-    fetchSummary();
-  }, );
-
-  const fetchSummary = async () => {
+  const fetchSummary = useCallback(async () => {
     try {
       setLoading(true);
       const url = year
@@ -273,7 +270,11 @@ export function SalesSummary({ year }: SalesSummaryProps) {
     } finally {
       setLoading(false);
     }
-  };
+  }, [year]);
+
+  useEffect(() => {
+    fetchSummary();
+  }, [fetchSummary]);
 
   return (
     <Card>
@@ -317,7 +318,9 @@ export function SalesSummary({ year }: SalesSummaryProps) {
                     {!year && (
                       <>
                         <td className="text-right py-2">
-                          {item.avgMonthlySales?.toFixed(0)}
+                          {typeof item.avgMonthlySales === "number"
+                            ? item.avgMonthlySales.toFixed(0)
+                            : Number(item.avgMonthlySales || 0).toFixed(0)}
                         </td>
                         <td className="text-right py-2">
                           {item.minSales?.toLocaleString("pt-BR")}

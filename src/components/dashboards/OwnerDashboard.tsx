@@ -1,37 +1,16 @@
 "use client";
 
-import { useState } from "react";
 import useSWR from "swr";
 import { Card, CardContent, CardHeader, CardTitle } from "../ui/card";
+import { Badge } from "@/components/ui/badge";
+import Link from "next/link";
 import {
-  BarChart,
-  Bar,
-  XAxis,
-  YAxis,
-  CartesianGrid,
-  Tooltip,
-  Legend,
-  ResponsiveContainer,
-  PieChart,
-  Pie,
-  Cell,
-} from "recharts";
-import {
-  Select,
-  SelectContent,
-  SelectItem,
-  SelectTrigger,
-  SelectValue,
-} from "../ui/select";
-import {
-  Table,
-  TableBody,
-  TableCell,
-  TableHead,
-  TableHeader,
-  TableRow,
-} from "../ui/table";
-import { Badge } from "../ui/badge";
+  FileEdit,
+  CheckSquare,
+  Package,
+  BarChart3,
+  Settings,
+} from "lucide-react";
 
 const fetcher = async (url: string) => {
   const res = await fetch(url);
@@ -50,18 +29,30 @@ interface SummaryData {
   }>;
 }
 
-const COLORS = ["#FF6B6B", "#FFD93D", "#6BCB77", "#4D96FF", "#9D4EDD"];
-
 export function OwnerDashboard() {
   const { data, error, isLoading } = useSWR<SummaryData>(
     "/api/dashboard/summary",
     fetcher,
     {
-      refreshInterval: 60000, // Atualiza a cada minuto
+      refreshInterval: 60000,
     }
   );
 
-  const [periodFilter, setPeriodFilter] = useState("all");
+  const { data: editRequests } = useSWR<unknown[]>(
+    "/api/edit-requests?status=pending",
+    fetcher,
+    { refreshInterval: 30000 }
+  );
+
+  const { data: itemRequests } = useSWR<unknown[]>(
+    "/api/order-item-edit-requests?status=pending",
+    fetcher,
+    { refreshInterval: 30000 }
+  );
+
+  const { data: orders } = useSWR<unknown[]>("/api/orders", fetcher, {
+    refreshInterval: 30000,
+  });
 
   if (isLoading) {
     return (
@@ -93,31 +84,59 @@ export function OwnerDashboard() {
       0
     ) || 0;
 
+  const quickAccessCards = [
+    {
+      title: "Visão de Pedidos",
+      description: "Visualize e gerencie todos os pedidos",
+      count: orders?.length || 0,
+      href: "/dashboard/orders-overview",
+      icon: Package,
+      color: "text-blue-600",
+    },
+    {
+      title: "Solicitações de Edição",
+      description: "Aprove solicitações de edição de texto",
+      count: editRequests?.length || 0,
+      href: "/dashboard/edit-requests",
+      icon: FileEdit,
+      color: "text-yellow-600",
+    },
+    {
+      title: "Edições de Itens",
+      description: "Aprove edições de itens de pedidos",
+      count: itemRequests?.length || 0,
+      href: "/dashboard/item-requests",
+      icon: CheckSquare,
+      color: "text-orange-600",
+    },
+    {
+      title: "Análises e Métricas",
+      description: "Veja gráficos e estatísticas detalhadas",
+      count: data?.ordersByStore.length || 0,
+      href: "/dashboard/analytics",
+      icon: BarChart3,
+      color: "text-purple-600",
+    },
+    {
+      title: "Administração",
+      description: "Gerencie usuários, lojas e produtos",
+      count: 0,
+      href: "/dashboard/admin",
+      icon: Settings,
+      color: "text-gray-600",
+    },
+  ];
+
   return (
     <div className="space-y-6">
-      <div className="flex justify-between items-center">
-        <div>
-          <h2 className="text-3xl font-bold">Dashboard Gerencial</h2>
-          <p className="text-muted-foreground">
-            Análise de pedidos de todas as lojas.
-          </p>
-        </div>
-        <div className="w-48">
-          <Select value={periodFilter} onValueChange={setPeriodFilter}>
-            <SelectTrigger>
-              <SelectValue />
-            </SelectTrigger>
-            <SelectContent>
-              <SelectItem value="all">Todo o Período</SelectItem>
-              <SelectItem value="7days">Últimos 7 dias</SelectItem>
-              <SelectItem value="30days">Últimos 30 dias</SelectItem>
-              <SelectItem value="90days">Últimos 90 dias</SelectItem>
-            </SelectContent>
-          </Select>
-        </div>
+      <div>
+        <h2 className="text-3xl font-bold">Dashboard Geral</h2>
+        <p className="text-muted-foreground">
+          Visão geral do sistema e acesso rápido às funcionalidades
+        </p>
       </div>
 
-      {/* Cards de Métricas */}
+      {/* Cards de Métricas Principais */}
       <div className="grid grid-cols-1 md:grid-cols-3 gap-6">
         <Card>
           <CardHeader className="pb-3">
@@ -164,97 +183,56 @@ export function OwnerDashboard() {
         </Card>
       </div>
 
-      {/* Gráficos */}
-      <div className="grid grid-cols-1 lg:grid-cols-2 gap-8">
-        <Card>
-          <CardHeader>
-            <CardTitle>Pedidos por Loja</CardTitle>
-          </CardHeader>
-          <CardContent>
-            {data && data.ordersByStore.length > 0 ? (
-              <ResponsiveContainer width="100%" height={300}>
-                <BarChart data={data.ordersByStore}>
-                  <CartesianGrid strokeDasharray="3 3" />
-                  <XAxis dataKey="storeName" />
-                  <YAxis />
-                  <Tooltip />
-                  <Legend />
-                  <Bar dataKey="count" fill="#FF6B6B" name="Pedidos" />
-                </BarChart>
-              </ResponsiveContainer>
-            ) : (
-              <div className="h-[300px] flex items-center justify-center">
-                <p className="text-muted-foreground">Nenhum dado disponível</p>
-              </div>
-            )}
-          </CardContent>
-        </Card>
-
-        <Card>
-          <CardHeader>
-            <CardTitle>Produtos Mais Pedidos (Unidades)</CardTitle>
-          </CardHeader>
-          <CardContent>
-            {data && data.topProducts.length > 0 ? (
-              <ResponsiveContainer width="100%" height={300}>
-                <PieChart>
-                  <Pie
-                    data={data.topProducts}
-                    cx="50%"
-                    cy="50%"
-                    labelLine={false}
-                    outerRadius={100}
-                    fill="#8884d8"
-                    dataKey="totalQuantity"
-                    label={(entry) => entry.productName as string}
-                  >
-                    {data.topProducts.map((entry, index) => (
-                      <Cell
-                        key={`cell-${index}`}
-                        fill={COLORS[index % COLORS.length]}
-                      />
-                    ))}
-                  </Pie>
-                  <Tooltip />
-                </PieChart>
-              </ResponsiveContainer>
-            ) : (
-              <div className="h-[300px] flex items-center justify-center">
-                <p className="text-muted-foreground">Nenhum dado disponível</p>
-              </div>
-            )}
-          </CardContent>
-        </Card>
+      {/* Acesso Rápido */}
+      <div>
+        <h3 className="text-xl font-semibold mb-4">Acesso Rápido</h3>
+        <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
+          {quickAccessCards.map((card) => (
+            <Link key={card.href} href={card.href}>
+              <Card className="hover:shadow-lg transition-shadow cursor-pointer h-full">
+                <CardHeader>
+                  <div className="flex items-start justify-between">
+                    <div className="flex-1">
+                      <CardTitle className="text-lg flex items-center gap-2">
+                        <card.icon className={`h-5 w-5 ${card.color}`} />
+                        {card.title}
+                      </CardTitle>
+                      <p className="text-sm text-muted-foreground mt-2">
+                        {card.description}
+                      </p>
+                    </div>
+                    {card.count > 0 && (
+                      <Badge variant="destructive" className="ml-2">
+                        {card.count}
+                      </Badge>
+                    )}
+                  </div>
+                </CardHeader>
+              </Card>
+            </Link>
+          ))}
+        </div>
       </div>
 
-      {/* Tabela Detalhada */}
-      <div className="grid grid-cols-1 lg:grid-cols-2 gap-8">
+      {/* Resumo Rápido */}
+      <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
         <Card>
           <CardHeader>
-            <CardTitle>Detalhamento por Filial</CardTitle>
+            <CardTitle>Pedidos por Filial</CardTitle>
           </CardHeader>
           <CardContent>
             {data && data.ordersByStore.length > 0 ? (
-              <Table>
-                <TableHeader>
-                  <TableRow>
-                    <TableHead>Filial</TableHead>
-                    <TableHead className="text-right">Pedidos</TableHead>
-                  </TableRow>
-                </TableHeader>
-                <TableBody>
-                  {data.ordersByStore.map((store, index) => (
-                    <TableRow key={index}>
-                      <TableCell className="font-medium">
-                        {store.storeName}
-                      </TableCell>
-                      <TableCell className="text-right">
-                        <Badge variant="outline">{store.count}</Badge>
-                      </TableCell>
-                    </TableRow>
-                  ))}
-                </TableBody>
-              </Table>
+              <div className="space-y-2">
+                {data.ordersByStore.slice(0, 5).map((store, index) => (
+                  <div
+                    key={index}
+                    className="flex justify-between items-center p-2 rounded hover:bg-muted"
+                  >
+                    <span className="font-medium">{store.storeName}</span>
+                    <Badge variant="outline">{store.count} pedidos</Badge>
+                  </div>
+                ))}
+              </div>
             ) : (
               <p className="text-center text-muted-foreground py-8">
                 Nenhum dado disponível
@@ -269,26 +247,19 @@ export function OwnerDashboard() {
           </CardHeader>
           <CardContent>
             {data && data.topProducts.length > 0 ? (
-              <Table>
-                <TableHeader>
-                  <TableRow>
-                    <TableHead>Produto</TableHead>
-                    <TableHead className="text-right">Quantidade</TableHead>
-                  </TableRow>
-                </TableHeader>
-                <TableBody>
-                  {data.topProducts.map((product, index) => (
-                    <TableRow key={index}>
-                      <TableCell className="font-medium">
-                        {product.productName}
-                      </TableCell>
-                      <TableCell className="text-right">
-                        <Badge variant="outline">{product.totalQuantity}</Badge>
-                      </TableCell>
-                    </TableRow>
-                  ))}
-                </TableBody>
-              </Table>
+              <div className="space-y-2">
+                {data.topProducts.slice(0, 5).map((product, index) => (
+                  <div
+                    key={index}
+                    className="flex justify-between items-center p-2 rounded hover:bg-muted"
+                  >
+                    <span className="font-medium">{product.productName}</span>
+                    <Badge variant="outline">
+                      {product.totalQuantity} unidades
+                    </Badge>
+                  </div>
+                ))}
+              </div>
             ) : (
               <p className="text-center text-muted-foreground py-8">
                 Nenhum dado disponível
