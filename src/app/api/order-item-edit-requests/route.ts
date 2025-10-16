@@ -5,6 +5,7 @@ import { orderItemEditRequests, orderItems } from "@/server/schema";
 import { eq, and } from "drizzle-orm";
 import { verifyToken } from "@/server/auth";
 import { requestStatus } from "@/server/schema";
+import { createOrderItemEditRequestsSchema } from "@/server/validators";
 
 // GET - Listar solicitações de edição
 export async function GET(req: NextRequest) {
@@ -55,7 +56,12 @@ export async function GET(req: NextRequest) {
     if (status || orderId) {
       const where = [];
       if (status) {
-        where.push(eq(orderItemEditRequests.status, status as typeof requestStatus.enumValues[number]));
+        where.push(
+          eq(
+            orderItemEditRequests.status,
+            status as (typeof requestStatus.enumValues)[number]
+          )
+        );
       }
       if (orderId) {
         where.push(eq(orderItemEditRequests.orderId, orderId));
@@ -114,59 +120,99 @@ export async function POST(req: NextRequest) {
       return NextResponse.json({ message: "Não autorizado" }, { status: 401 });
     }
 
-    // Apenas gerentes podem solicitar edições
-    if (user.role !== "manager") {
+    // Apenas gerentes e donos podem solicitar edições
+    if (user.role !== "manager" && user.role !== "owner") {
       return NextResponse.json(
-        { message: "Apenas gerentes podem solicitar edições" },
+        { message: "Apenas gerentes e donos podem solicitar edições" },
         { status: 403 }
       );
     }
 
     const body = await req.json();
-    const {
-      orderItemId,
-      newStock,
-      newQuantity,
-      newType,
-      newClientName,
-      newDeliveryDate,
-    } = body;
+    const parsedData = createOrderItemEditRequestsSchema.safeParse(body);
 
-    // Buscar item original
-    const originalItem = await db.query.orderItems.findFirst({
-      where: eq(orderItems.id, orderItemId),
-    });
-
-    if (!originalItem) {
+    if (!parsedData.success) {
       return NextResponse.json(
-        { message: "Item não encontrado" },
-        { status: 404 }
+        {
+          message: "Dados inválidos",
+          errors: parsedData.error.flatten().fieldErrors,
+        },
+        { status: 400 }
       );
     }
 
-    // Criar solicitação
-    const [request] = await db
-      .insert(orderItemEditRequests)
-      .values({
+    const { requests } = parsedData.data;
+    const createdRequests = [];
+
+    for (const requestData of requests) {
+      const {
         orderItemId,
-        orderId: originalItem.orderId,
-        requesterId: user.id,
-        originalStock: originalItem.stock,
-        originalQuantity: originalItem.quantity,
-        originalType: originalItem.type,
-        originalClientName: originalItem.clientName,
-        originalDeliveryDate: originalItem.deliveryDate,
-        newStock: newStock ?? originalItem.stock,
-        newQuantity: newQuantity ?? originalItem.quantity,
-        newType: newType ?? originalItem.type,
-        newClientName: newClientName ?? originalItem.clientName,
-        newDeliveryDate: newDeliveryDate ?? originalItem.deliveryDate,
-      })
-      .returning();
+        newStock,
+        newQuantity,
+        newType,
+        newClientName,
+        newDeliveryDate,
+      } = requestData;
+
+      // Buscar item original
+      const originalItem = await db.query.orderItems.findFirst({
+        where: eq(orderItems.id, orderItemId),
+      });
+
+      if (!originalItem) {
+        return NextResponse.json(
+          { message: `Item ${orderItemId} não encontrado` },
+          { status: 404 }
+        );
+      }
+
+      // Verificar se pelo menos um campo foi alterado
+      const hasChanges =
+        (newStock !== undefined && newStock !== originalItem.stock) ||
+        (newQuantity !== undefined && newQuantity !== originalItem.quantity) ||
+        (newType !== undefined && newType !== originalItem.type) ||
+        (newClientName !== undefined &&
+          newClientName !== originalItem.clientName) ||
+        (newDeliveryDate !== undefined &&
+          newDeliveryDate !== originalItem.deliveryDate);
+
+      if (!hasChanges) {
+        continue; // Pula itens sem alterações
+      }
+
+      // Criar solicitação
+      const [request] = await db
+        .insert(orderItemEditRequests)
+        .values({
+          orderItemId,
+          orderId: originalItem.orderId,
+          requesterId: user.id,
+          originalStock: originalItem.stock,
+          originalQuantity: originalItem.quantity,
+          originalType: originalItem.type,
+          originalClientName: originalItem.clientName,
+          originalDeliveryDate: originalItem.deliveryDate,
+          newStock: newStock ?? originalItem.stock,
+          newQuantity: newQuantity ?? originalItem.quantity,
+          newType: newType ?? originalItem.type,
+          newClientName: newClientName ?? originalItem.clientName,
+          newDeliveryDate: newDeliveryDate ?? originalItem.deliveryDate,
+        })
+        .returning();
+
+      createdRequests.push(request);
+    }
+
+    if (createdRequests.length === 0) {
+      return NextResponse.json(
+        { message: "Nenhuma alteração foi detectada" },
+        { status: 400 }
+      );
+    }
 
     return NextResponse.json({
-      message: "Solicitação de edição criada com sucesso",
-      request,
+      message: `${createdRequests.length} solicitação(ões) de edição criada(s) com sucesso`,
+      requests: createdRequests,
     });
   } catch (error) {
     console.error("Erro ao criar solicitação:", error);

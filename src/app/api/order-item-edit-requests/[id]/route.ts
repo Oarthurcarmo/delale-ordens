@@ -69,16 +69,24 @@ export async function PATCH(
 
     // Se aprovado, aplicar as mudanças no item
     if (decision === "approved") {
-      await db
-        .update(orderItems)
-        .set({
-          stock: request.newStock!,
-          quantity: request.newQuantity!,
-          type: request.newType!,
-          clientName: request.newClientName,
-          deliveryDate: request.newDeliveryDate,
-        })
-        .where(eq(orderItems.id, request.orderItemId));
+      // Se quantidade nova é 0, deletar o item
+      if (request.newQuantity === 0) {
+        await db
+          .delete(orderItems)
+          .where(eq(orderItems.id, request.orderItemId));
+      } else {
+        // Caso contrário, atualizar o item
+        await db
+          .update(orderItems)
+          .set({
+            stock: request.newStock!,
+            quantity: request.newQuantity!,
+            type: request.newType!,
+            clientName: request.newClientName,
+            deliveryDate: request.newDeliveryDate,
+          })
+          .where(eq(orderItems.id, request.orderItemId));
+      }
     }
 
     // Atualizar solicitação

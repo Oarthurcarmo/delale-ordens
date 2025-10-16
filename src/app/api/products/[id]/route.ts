@@ -1,9 +1,9 @@
 import { db } from "@/server/db";
-import { products } from "@/server/schema";
+import { products, orderItems, salesHistory } from "@/server/schema";
 import { NextResponse } from "next/server";
 import { cookies } from "next/headers";
 import { verifyToken } from "@/server/auth";
-import { eq } from "drizzle-orm";
+import { eq, count } from "drizzle-orm";
 import { z } from "zod";
 
 const updateProductSchema = z.object({
@@ -118,23 +118,89 @@ export async function DELETE(
 
   try {
     const { id } = await params;
-    const deletedProduct = await db
-      .delete(products)
-      .where(eq(products.id, parseInt(id)))
-      .returning();
+    const productId = parseInt(id);
 
-    if (!deletedProduct.length) {
+    // Verificar se o produto existe
+    const product = await db.query.products.findFirst({
+      where: eq(products.id, productId),
+    });
+
+    if (!product) {
       return NextResponse.json(
         { message: "Produto não encontrado" },
         { status: 404 }
       );
     }
 
+    // Verificar se o produto está sendo usado em pedidos
+    const ordersUsingProduct = await db
+      .select({ count: count() })
+      .from(orderItems)
+      .where(eq(orderItems.productId, productId));
+
+    const orderCount = ordersUsingProduct[0]?.count || 0;
+
+    if (orderCount > 0) {
+      return NextResponse.json(
+        {
+          message: `Não é possível excluir este produto. Ele está sendo usado em ${orderCount} ${
+            orderCount === 1 ? "pedido" : "pedidos"
+          }.`,
+          error: "PRODUCT_IN_USE",
+          usageCount: orderCount,
+        },
+        { status: 409 } // 409 Conflict
+      );
+    }
+
+    // Verificar se o produto tem histórico de vendas
+    const salesUsingProduct = await db
+      .select({ count: count() })
+      .from(salesHistory)
+      .where(eq(salesHistory.productId, productId));
+
+    const salesCount = salesUsingProduct[0]?.count || 0;
+
+    if (salesCount > 0) {
+      return NextResponse.json(
+        {
+          message: `Não é possível excluir este produto. Ele possui ${salesCount} ${
+            salesCount === 1 ? "registro" : "registros"
+          } de histórico de vendas.`,
+          error: "PRODUCT_HAS_SALES_HISTORY",
+          salesCount: salesCount,
+        },
+        { status: 409 } // 409 Conflict
+      );
+    }
+
+    // Se passou por todas as verificações, pode deletar
+    const deletedProduct = await db
+      .delete(products)
+      .where(eq(products.id, productId))
+      .returning();
+
     return NextResponse.json({
       message: "Produto deletado com sucesso",
+      product: deletedProduct[0],
     });
   } catch (error) {
     console.error("Error deleting product:", error);
+
+    // Capturar erros de constraint do banco de dados
+    if (error instanceof Error) {
+      if (error.message.includes("foreign key constraint")) {
+        return NextResponse.json(
+          {
+            message:
+              "Não é possível excluir este produto pois ele está sendo referenciado em outros registros.",
+            error: "FOREIGN_KEY_CONSTRAINT",
+          },
+          { status: 409 }
+        );
+      }
+    }
+
     return NextResponse.json(
       { message: "Erro ao deletar produto" },
       { status: 500 }
