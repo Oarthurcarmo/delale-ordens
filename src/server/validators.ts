@@ -35,3 +35,21 @@ export const createEditRequestSchema = z.object({
 export const updateEditRequestSchema = z.object({
   status: z.enum(["approved", "rejected"]),
 });
+
+export const orderItemEditRequestSchema = z.object({
+  orderItemId: z.number(),
+  newStock: z.number().min(0),
+  newQuantity: z.number().min(0),
+  newType: z.enum(["Vitrine", "Encomenda"]),
+  newClientName: z.string().nullish(),
+  newDeliveryDate: z.string().nullish(),
+});
+
+export const createOrderItemEditRequestsSchema = z.object({
+  requests: z.array(orderItemEditRequestSchema).min(1),
+});
+
+export const batchOrderItemEditRequestSchema = z.object({
+  requestIds: z.array(z.number()).min(1),
+  decision: z.enum(["approved", "rejected"]),
+});
