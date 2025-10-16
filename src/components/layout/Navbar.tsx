@@ -17,7 +17,7 @@ export function Navbar() {
 
   return (
     <header className="bg-card shadow-sm border-b">
-      <nav className="container mx-auto px-6 py-4 flex justify-between items-center">
+      <nav className="container px-6 py-4 flex justify-between items-center">
         <h1 className="text-2xl font-bold text-primary">
           Ordem de Pedidos - Confeitaria
         </h1>
