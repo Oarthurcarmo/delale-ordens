@@ -29,12 +29,70 @@ export default function RegisterPage() {
     username: "",
     password: "",
     role: "manager",
-    storeId: 1, // Mock storeId, in a real app this would be dynamic
+    storeId: 1,
   });
-  const [error, setError] = useState("");
+  const [errors, setErrors] = useState({
+    name: "",
+    email: "",
+    username: "",
+    password: "",
+    storeId: "",
+    submit: "",
+  });
+
+  const validateForm = () => {
+    let isValid = true;
+    const newErrors = {
+      name: "",
+      email: "",
+      username: "",
+      password: "",
+      storeId: "",
+      submit: "",
+    };
+
+    // Validação do nome
+    if (formData.name.length < 3) {
+      newErrors.name = "Nome deve ter pelo menos 3 caracteres";
+      isValid = false;
+    }
+
+    // Validação do email
+    const emailRegex = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
+    if (!emailRegex.test(formData.email)) {
+      newErrors.email = "Email inválido";
+      isValid = false;
+    }
+
+    // Validação do username
+    if (formData.username.length < 3) {
+      newErrors.username = "Usuário deve ter pelo menos 3 caracteres";
+      isValid = false;
+    }
+
+    // Validação da senha
+    if (formData.password.length < 6) {
+      newErrors.password = "Senha deve ter pelo menos 6 caracteres";
+      isValid = false;
+    }
+
+    // Validação do ID da loja
+    if (formData.storeId < 1) {
+      newErrors.storeId = "ID da loja inválido";
+      isValid = false;
+    }
+
+    setErrors(newErrors);
+    return isValid;
+  };
 
   const handleChange = (e: React.ChangeEvent<HTMLInputElement>) => {
-    setFormData({ ...formData, [e.target.id]: e.target.value });
+    const { id, value } = e.target;
+    // Converte storeId para número
+    const finalValue = id === "storeId" ? parseInt(value) || 1 : value;
+    setFormData({ ...formData, [id]: finalValue });
+    // Limpa o erro do campo quando ele é alterado
+    setErrors((prev) => ({ ...prev, [id]: "" }));
   };
 
   const handleRoleChange = (value: string) => {
@@ -43,7 +101,11 @@ export default function RegisterPage() {
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
-    setError("");
+    setErrors((prev) => ({ ...prev, submit: "" }));
+
+    if (!validateForm()) {
+      return;
+    }
 
     const res = await fetch("/api/auth/register", {
       method: "POST",
@@ -55,7 +117,10 @@ export default function RegisterPage() {
       router.push("/login");
     } else {
       const data = await res.json();
-      setError(data.message || "Falha no registro.");
+      setErrors((prev) => ({
+        ...prev,
+        submit: data.message || "Falha no registro.",
+      }));
     }
   };
 
@@ -77,8 +142,10 @@ export default function RegisterPage() {
                 onChange={handleChange}
                 required
               />
+              {errors.name && (
+                <p className="text-sm text-destructive">{errors.name}</p>
+              )}
             </div>
-            {/* In a real app, you would fetch stores and list them here */}
             <div className="space-y-2">
               <Label htmlFor="storeId">ID da Loja</Label>
               <Input
@@ -88,6 +155,9 @@ export default function RegisterPage() {
                 onChange={handleChange}
                 required
               />
+              {errors.storeId && (
+                <p className="text-sm text-destructive">{errors.storeId}</p>
+              )}
             </div>
             <div className="space-y-2">
               <Label htmlFor="email">Email</Label>
@@ -99,6 +169,9 @@ export default function RegisterPage() {
                 onChange={handleChange}
                 required
               />
+              {errors.email && (
+                <p className="text-sm text-destructive">{errors.email}</p>
+              )}
             </div>
             <div className="space-y-2">
               <Label htmlFor="username">Usuário</Label>
@@ -109,6 +182,9 @@ export default function RegisterPage() {
                 onChange={handleChange}
                 required
               />
+              {errors.username && (
+                <p className="text-sm text-destructive">{errors.username}</p>
+              )}
             </div>
             <div className="space-y-2">
               <Label htmlFor="password">Senha</Label>
@@ -119,6 +195,9 @@ export default function RegisterPage() {
                 onChange={handleChange}
                 required
               />
+              {errors.password && (
+                <p className="text-sm text-destructive">{errors.password}</p>
+              )}
             </div>
             <div className="space-y-2">
               <Label htmlFor="profile">Perfil</Label>
@@ -138,7 +217,9 @@ export default function RegisterPage() {
                 </SelectContent>
               </Select>
             </div>
-            {error && <p className="text-sm text-destructive">{error}</p>}
+            {errors.submit && (
+              <p className="text-sm text-destructive">{errors.submit}</p>
+            )}
             <Button type="submit" className="w-full">
               Cadastrar
             </Button>
