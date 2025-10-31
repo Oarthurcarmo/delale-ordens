@@ -77,6 +77,21 @@ export const dailyInsight = pgTable("daily_insight", {
   createdAt: timestamp("created_at").defaultNow().notNull(),
 });
 
+export const dailyOrderHistory = pgTable("daily_order_history", {
+  id: serial("id").primaryKey(),
+  productId: integer("product_id")
+    .notNull()
+    .references(() => products.id),
+  storeId: integer("store_id")
+    .notNull()
+    .references(() => stores.id),
+  orderDate: date("order_date").notNull(),
+  quantityOrdered: integer("quantity_ordered").notNull(),
+  stockAtTime: integer("stock_at_time").notNull(),
+  dayOfWeek: integer("day_of_week").notNull(), // 0 = Domingo, 6 = Sábado
+  createdAt: timestamp("created_at").defaultNow().notNull(),
+});
+
 export const orders = pgTable("orders", {
   id: uuid("id").defaultRandom().primaryKey(),
   code: text("code").notNull().unique(),
@@ -250,3 +265,17 @@ export const salesHistoryRelations = relations(salesHistory, ({ one }) => ({
     references: [products.id],
   }),
 }));
+
+export const dailyOrderHistoryRelations = relations(
+  dailyOrderHistory,
+  ({ one }) => ({
+    product: one(products, {
+      fields: [dailyOrderHistory.productId],
+      references: [products.id],
+    }),
+    store: one(stores, {
+      fields: [dailyOrderHistory.storeId],
+      references: [stores.id],
+    }),
+  })
+);

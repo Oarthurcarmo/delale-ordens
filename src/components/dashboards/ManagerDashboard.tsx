@@ -1,6 +1,6 @@
 "use client";
 
-import { useState, useEffect, useMemo } from "react";
+import { useState, useEffect, useMemo, useCallback } from "react";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
@@ -64,6 +64,15 @@ interface EncomendaInfo {
   deliveryDate: string;
 }
 
+interface ProductSuggestion {
+  productId: number;
+  productName: string;
+  suggestion: number;
+  confidence: "stock" | "intermediate" | "advanced";
+  confidenceLabel: string;
+  daysOfHistory: number;
+}
+
 export function ManagerDashboard() {
   const { user } = useAuth();
   const [products, setProducts] = useState<Product[]>([]);
@@ -78,10 +87,11 @@ export function ManagerDashboard() {
   });
   const [showSummary, setShowSummary] = useState(false);
   const [isSubmitting, setIsSubmitting] = useState(false);
-  const [suggestions, setSuggestions] = useState<Map<number, number>>(
-    new Map()
-  );
+  const [suggestions, setSuggestions] = useState<
+    Map<number, ProductSuggestion>
+  >(new Map());
   const [isLoading, setIsLoading] = useState(true);
+  const [isLoadingSuggestions, setIsLoadingSuggestions] = useState(false);
   const [searchTerm, setSearchTerm] = useState("");
   const [activeTab, setActiveTab] = useState<"vitrine" | "encomenda">(
     "vitrine"
@@ -120,6 +130,54 @@ export function ManagerDashboard() {
       setIsLoading(false);
     }
   };
+
+  const fetchSuggestions = useCallback(async () => {
+    try {
+      setIsLoadingSuggestions(true);
+
+      // Preparar dados de estoque atual para enviar
+      const stocks: { [key: number]: number } = {};
+      orderItems.forEach((item, productId) => {
+        if (item.stock > 0) {
+          stocks[productId] = item.stock;
+        }
+      });
+
+      const res = await fetch("/api/predictions", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ stocks }),
+      });
+
+      if (res.ok) {
+        const data = await res.json();
+        if (data.success && data.suggestions) {
+          const suggestionsMap = new Map<number, ProductSuggestion>();
+          data.suggestions.forEach((suggestion: ProductSuggestion) => {
+            suggestionsMap.set(suggestion.productId, suggestion);
+          });
+          setSuggestions(suggestionsMap);
+        }
+      }
+    } catch (error) {
+      console.error("Erro ao carregar sugestões:", error);
+      // Não exibir erro ao usuário para não poluir a UI
+    } finally {
+      setIsLoadingSuggestions(false);
+    }
+  }, [orderItems]);
+
+  // Recalcular sugestões quando estoques mudarem (com debounce)
+  useEffect(() => {
+    const timeoutId = setTimeout(() => {
+      // Só buscar sugestões se já tiver produtos carregados
+      if (products.length > 0) {
+        fetchSuggestions();
+      }
+    }, 800); // 800ms de debounce
+
+    return () => clearTimeout(timeoutId);
+  }, [orderItems, products.length, fetchSuggestions]);
 
   const updateOrderItem = (
     productId: number,
@@ -184,8 +242,21 @@ export function ManagerDashboard() {
   const applySuggestion = (productId: number) => {
     const suggestion = suggestions.get(productId);
     if (suggestion) {
-      updateOrderItem(productId, "quantity", suggestion);
+      updateOrderItem(productId, "quantity", suggestion.suggestion);
       toast.success("Sugestão aplicada!");
+    }
+  };
+
+  const getConfidenceBadgeColor = (confidence: string) => {
+    switch (confidence) {
+      case "stock":
+        return "bg-gray-100 text-gray-700 dark:bg-gray-800 dark:text-gray-300";
+      case "intermediate":
+        return "bg-amber-100 text-amber-700 dark:bg-amber-900/30 dark:text-amber-300";
+      case "advanced":
+        return "bg-green-100 text-green-700 dark:bg-green-900/30 dark:text-green-300";
+      default:
+        return "bg-gray-100 text-gray-700";
     }
   };
 
@@ -575,25 +646,47 @@ export function ManagerDashboard() {
                             </TableCell>
 
                             <TableCell className="text-center">
-                              {suggestion ? (
-                                <Button
-                                  type="button"
-                                  variant="outline"
-                                  size="sm"
-                                  onClick={() => {
-                                    updateOrderItem(
-                                      product.id,
-                                      "type",
-                                      "Vitrine"
-                                    );
-                                    applySuggestion(product.id);
-                                  }}
-                                  className="gap-1.5 border-amber-500/50 text-amber-700 hover:bg-amber-50"
-                                  tabIndex={-1}
-                                >
-                                  <Sparkles className="h-3 w-3 fill-amber-500" />
-                                  {suggestion}
-                                </Button>
+                              {isLoadingSuggestions ? (
+                                <div className="flex flex-col items-center gap-1">
+                                  <div className="animate-spin rounded-full h-5 w-5 border-2 border-amber-500 border-t-transparent"></div>
+                                  <span className="text-[10px] text-muted-foreground">
+                                    Calculando...
+                                  </span>
+                                </div>
+                              ) : suggestion ? (
+                                suggestion.suggestion > 0 ? (
+                                  <div className="flex flex-col items-center gap-1">
+                                    <Button
+                                      type="button"
+                                      variant="outline"
+                                      size="sm"
+                                      onClick={() => {
+                                        updateOrderItem(
+                                          product.id,
+                                          "type",
+                                          "Vitrine"
+                                        );
+                                        applySuggestion(product.id);
+                                      }}
+                                      className="gap-1.5 border-amber-500/50 text-amber-700 hover:bg-amber-50"
+                                      tabIndex={-1}
+                                    >
+                                      <Sparkles className="h-3 w-3 fill-amber-500" />
+                                      {suggestion.suggestion}
+                                    </Button>
+                                    <span
+                                      className={`text-[10px] px-1.5 py-0.5 rounded-full ${getConfidenceBadgeColor(
+                                        suggestion.confidence
+                                      )}`}
+                                    >
+                                      {suggestion.confidenceLabel}
+                                    </span>
+                                  </div>
+                                ) : (
+                                  <span className="text-xs text-green-600 dark:text-green-400 font-medium">
+                                    ✓ Estoque OK
+                                  </span>
+                                )
                               ) : (
                                 <span className="text-muted-foreground text-sm">
                                   —
@@ -680,21 +773,43 @@ export function ManagerDashboard() {
                             </Badge>
                           )}
                         </div>
-                        {suggestion && (
-                          <Button
-                            type="button"
-                            variant="outline"
-                            size="sm"
-                            onClick={() => {
-                              updateOrderItem(product.id, "type", "Vitrine");
-                              applySuggestion(product.id);
-                            }}
-                            className="w-full mt-2 gap-2 border-amber-500/50 text-amber-700 hover:bg-amber-50 hover:border-amber-500"
-                          >
-                            <Sparkles className="h-3.5 w-3.5 fill-amber-500" />
-                            Sugestão IA: {suggestion}
-                          </Button>
-                        )}
+                        {suggestion &&
+                          (suggestion.suggestion > 0 ? (
+                            <div className="space-y-1 mt-2">
+                              <Button
+                                type="button"
+                                variant="outline"
+                                size="sm"
+                                onClick={() => {
+                                  updateOrderItem(
+                                    product.id,
+                                    "type",
+                                    "Vitrine"
+                                  );
+                                  applySuggestion(product.id);
+                                }}
+                                className="w-full gap-2 border-amber-500/50 text-amber-700 hover:bg-amber-50 hover:border-amber-500"
+                              >
+                                <Sparkles className="h-3.5 w-3.5 fill-amber-500" />
+                                Sugestão IA: {suggestion.suggestion}
+                              </Button>
+                              <div className="flex justify-center">
+                                <span
+                                  className={`text-[10px] px-2 py-0.5 rounded-full ${getConfidenceBadgeColor(
+                                    suggestion.confidence
+                                  )}`}
+                                >
+                                  {suggestion.confidenceLabel}
+                                </span>
+                              </div>
+                            </div>
+                          ) : (
+                            <div className="mt-2 p-2 bg-green-50 dark:bg-green-950/20 border border-green-200 dark:border-green-800 rounded-md">
+                              <span className="text-xs text-green-600 dark:text-green-400 font-medium">
+                                ✓ Estoque suficiente
+                              </span>
+                            </div>
+                          ))}
                       </CardHeader>
                       <CardContent className="space-y-3 pt-0">
                         <div className="grid grid-cols-2 gap-3">
@@ -795,12 +910,15 @@ export function ManagerDashboard() {
                 <Table>
                   <TableHeader>
                     <TableRow>
-                      <TableHead className="w-[30%]">Produto</TableHead>
+                      <TableHead className="w-[25%]">Produto</TableHead>
                       <TableHead className="w-[15%] text-center">
                         Quantidade
                       </TableHead>
-                      <TableHead className="w-[25%]">Cliente</TableHead>
-                      <TableHead className="w-[20%]">Data Entrega</TableHead>
+                      <TableHead className="w-[15%] text-center">
+                        Sugestão IA
+                      </TableHead>
+                      <TableHead className="w-[20%]">Cliente</TableHead>
+                      <TableHead className="w-[15%]">Data Entrega</TableHead>
                       <TableHead className="w-[10%]"></TableHead>
                     </TableRow>
                   </TableHeader>
@@ -898,6 +1016,58 @@ export function ManagerDashboard() {
                             </div>
                           </TableCell>
 
+                          <TableCell className="text-center">
+                            {(() => {
+                              const suggestion = suggestions.get(product.id);
+                              return isLoadingSuggestions ? (
+                                <div className="flex flex-col items-center gap-1">
+                                  <div className="animate-spin rounded-full h-5 w-5 border-2 border-amber-500 border-t-transparent"></div>
+                                  <span className="text-[10px] text-muted-foreground">
+                                    Calculando...
+                                  </span>
+                                </div>
+                              ) : suggestion ? (
+                                suggestion.suggestion > 0 ? (
+                                  <div className="flex flex-col items-center gap-1">
+                                    <Button
+                                      type="button"
+                                      variant="outline"
+                                      size="sm"
+                                      onClick={() => {
+                                        updateOrderItem(
+                                          product.id,
+                                          "type",
+                                          "Encomenda"
+                                        );
+                                        applySuggestion(product.id);
+                                      }}
+                                      className="gap-1.5 border-amber-500/50 text-amber-700 hover:bg-amber-50"
+                                      tabIndex={-1}
+                                    >
+                                      <Sparkles className="h-3 w-3 fill-amber-500" />
+                                      {suggestion.suggestion}
+                                    </Button>
+                                    <span
+                                      className={`text-[10px] px-1.5 py-0.5 rounded-full ${getConfidenceBadgeColor(
+                                        suggestion.confidence
+                                      )}`}
+                                    >
+                                      {suggestion.confidenceLabel}
+                                    </span>
+                                  </div>
+                                ) : (
+                                  <span className="text-xs text-green-600 dark:text-green-400 font-medium">
+                                    ✓ Estoque OK
+                                  </span>
+                                )
+                              ) : (
+                                <span className="text-muted-foreground text-sm">
+                                  —
+                                </span>
+                              );
+                            })()}
+                          </TableCell>
+
                           <TableCell>
                             {hasQuantity ? (
                               <Input
@@ -989,6 +1159,7 @@ export function ManagerDashboard() {
                 const hasEncomendaInfo = !!(
                   item?.clientName && item?.deliveryDate
                 );
+                const suggestion = suggestions.get(product.id);
 
                 // Só mostrar se for encomenda OU se tiver sido adicionado como encomenda
                 if (!isEncomenda && hasQuantity) return null;
@@ -1022,6 +1193,53 @@ export function ManagerDashboard() {
                           </Badge>
                         )}
                       </div>
+                      {isLoadingSuggestions ? (
+                        <div className="mt-2 p-2 border border-amber-200 dark:border-amber-800 rounded-md bg-amber-50/50 dark:bg-amber-950/20">
+                          <div className="flex items-center justify-center gap-2">
+                            <div className="animate-spin rounded-full h-4 w-4 border-2 border-amber-500 border-t-transparent"></div>
+                            <span className="text-xs text-muted-foreground">
+                              Calculando sugestão...
+                            </span>
+                          </div>
+                        </div>
+                      ) : suggestion ? (
+                        suggestion.suggestion > 0 ? (
+                          <div className="space-y-1 mt-2">
+                            <Button
+                              type="button"
+                              variant="outline"
+                              size="sm"
+                              onClick={() => {
+                                updateOrderItem(
+                                  product.id,
+                                  "type",
+                                  "Encomenda"
+                                );
+                                applySuggestion(product.id);
+                              }}
+                              className="w-full gap-2 border-amber-500/50 text-amber-700 hover:bg-amber-50 hover:border-amber-500"
+                            >
+                              <Sparkles className="h-3.5 w-3.5 fill-amber-500" />
+                              Sugestão IA: {suggestion.suggestion}
+                            </Button>
+                            <div className="flex justify-center">
+                              <span
+                                className={`text-[10px] px-2 py-0.5 rounded-full ${getConfidenceBadgeColor(
+                                  suggestion.confidence
+                                )}`}
+                              >
+                                {suggestion.confidenceLabel}
+                              </span>
+                            </div>
+                          </div>
+                        ) : (
+                          <div className="mt-2 p-2 bg-green-50 dark:bg-green-950/20 border border-green-200 dark:border-green-800 rounded-md">
+                            <span className="text-xs text-green-600 dark:text-green-400 font-medium">
+                              ✓ Estoque suficiente
+                            </span>
+                          </div>
+                        )
+                      ) : null}
                     </CardHeader>
                     <CardContent className="space-y-3 pt-0">
                       <div className="space-y-1.5">
