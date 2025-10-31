@@ -104,10 +104,10 @@ export function OrderItemsEditRequestDialog({
     setChangesCount(changes);
   }, [editData]);
 
-  const updateItem = (
+  const updateItem = <K extends keyof EditItemData>(
     itemId: number,
-    field: keyof EditItemData,
-    value: any
+    field: K,
+    value: EditItemData[K]
   ) => {
     setEditData((prev) =>
       prev.map((item) =>

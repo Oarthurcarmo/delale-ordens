@@ -248,12 +248,13 @@ export function OrderItemEditRequestsPanel() {
                     </div>
                     <div className="flex items-center gap-2">
                       <Checkbox
-                        checked={allOrderSelected}
-                        ref={(el) => {
-                          if (el)
-                            el.indeterminate =
-                              someOrderSelected && !allOrderSelected;
-                        }}
+                        checked={
+                          allOrderSelected
+                            ? true
+                            : someOrderSelected
+                              ? "indeterminate"
+                              : false
+                        }
                         onCheckedChange={(checked) =>
                           handleSelectAll(orderCode, checked as boolean)
                         }
@@ -308,13 +309,13 @@ export function OrderItemEditRequestsPanel() {
                               <div className="flex items-center gap-2">
                                 {request.orderItem.product.name}
                                 {isDeleted && (
-                                  <Badge variant="destructive" size="sm">
+                                  <Badge variant="destructive">
                                     <Trash2 className="h-3 w-3 mr-1" />
                                     Excluir
                                   </Badge>
                                 )}
                                 {!isDeleted && (
-                                  <Badge variant="default" size="sm">
+                                  <Badge variant="default">
                                     <Edit3 className="h-3 w-3 mr-1" />
                                     Editar
                                   </Badge>
