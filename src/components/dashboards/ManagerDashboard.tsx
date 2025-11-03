@@ -31,7 +31,6 @@ import {
   Package,
   CalendarDays,
   User,
-  Sparkles,
   Plus,
   Minus,
   Check,
@@ -69,6 +68,15 @@ interface ProductForecast {
   suggestedProduction: number;
 }
 
+interface RecommendationResponse {
+  productId: number;
+  productName: string;
+  forecast: number;
+  stock: number;
+  orders: number;
+  suggestedProduction: number;
+}
+
 export function ManagerDashboard() {
   const { user } = useAuth();
   const [products, setProducts] = useState<Product[]>([]);
@@ -83,9 +91,6 @@ export function ManagerDashboard() {
   });
   const [showSummary, setShowSummary] = useState(false);
   const [isSubmitting, setIsSubmitting] = useState(false);
-  const [suggestions, setSuggestions] = useState<Map<number, number>>(
-    new Map()
-  );
   const [forecasts, setForecasts] = useState<Map<number, ProductForecast>>(
     new Map()
   );
@@ -103,6 +108,39 @@ export function ManagerDashboard() {
   // Fetch recommendations whenever order items change
   useEffect(() => {
     if (orderItems.size > 0) {
+      const items = Array.from(orderItems.values()).map((item) => ({
+        productId: item.productId,
+        stock: item.stock,
+        orders: item.quantity,
+      }));
+
+      const fetchRecommendations = async () => {
+        try {
+          const res = await fetch("/api/recommendations", {
+            method: "POST",
+            headers: { "Content-Type": "application/json" },
+            body: JSON.stringify({ items }),
+          });
+
+          if (res.ok) {
+            const data = await res.json();
+            if (data.success && data.recommendations) {
+              const newForecasts = new Map<number, ProductForecast>();
+              data.recommendations.forEach((rec: RecommendationResponse) => {
+                newForecasts.set(rec.productId, {
+                  productId: rec.productId,
+                  forecast: rec.forecast,
+                  suggestedProduction: rec.suggestedProduction,
+                });
+              });
+              setForecasts(newForecasts);
+            }
+          }
+        } catch (error) {
+          console.error("Error fetching recommendations:", error);
+        }
+      };
+
       fetchRecommendations();
     }
   }, [orderItems]);
@@ -133,39 +171,6 @@ export function ManagerDashboard() {
       toast.error("Erro ao carregar produtos");
     } finally {
       setIsLoading(false);
-    }
-  };
-
-  const fetchRecommendations = async () => {
-    try {
-      const items = Array.from(orderItems.values()).map((item) => ({
-        productId: item.productId,
-        stock: item.stock,
-        orders: item.quantity,
-      }));
-
-      const res = await fetch("/api/recommendations", {
-        method: "POST",
-        headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ items }),
-      });
-
-      if (res.ok) {
-        const data = await res.json();
-        if (data.success && data.recommendations) {
-          const newForecasts = new Map<number, ProductForecast>();
-          data.recommendations.forEach((rec: any) => {
-            newForecasts.set(rec.productId, {
-              productId: rec.productId,
-              forecast: rec.forecast,
-              suggestedProduction: rec.suggestedProduction,
-            });
-          });
-          setForecasts(newForecasts);
-        }
-      }
-    } catch (error) {
-      console.error("Error fetching recommendations:", error);
     }
   };
 
@@ -227,14 +232,6 @@ export function ManagerDashboard() {
       toast.success("Informações da encomenda salvas!");
     }
     setShowEncomendaDialog(false);
-  };
-
-  const applySuggestion = (productId: number) => {
-    const suggestion = suggestions.get(productId);
-    if (suggestion) {
-      updateOrderItem(productId, "quantity", suggestion);
-      toast.success("Sugestão aplicada!");
-    }
   };
 
   const handleOpenSummary = () => {
@@ -299,7 +296,6 @@ export function ManagerDashboard() {
 
         // Resetar formulário
         fetchProducts();
-        setSuggestions(new Map());
         setShowSummary(false);
         setSearchTerm("");
       } else {

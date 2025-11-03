@@ -43,6 +43,13 @@
       "when": 1760042133181,
       "tag": "0005_silky_random",
       "breakpoints": true
+    },
+    {
+      "idx": 6,
+      "version": "7",
+      "when": 1761335966737,
+      "tag": "0006_cloudy_whiplash",
+      "breakpoints": true
     }
   ]
 }

@@ -2,7 +2,7 @@ import { NextResponse } from "next/server";
 import { cookies } from "next/headers";
 import { db } from "@/server/db";
 import { verifyToken } from "@/server/auth";
-import { orders, orderItems } from "@/server/schema";
+import { orders, orderItems, dailyOrderHistory } from "@/server/schema";
 import { createOrderSchema } from "@/server/validators";
 import { generateOrderCode } from "@/server/id";
 import { eq } from "drizzle-orm";
@@ -101,6 +101,22 @@ export async function POST(req: Request) {
         orderId,
         ...item,
         deliveryDate: item.deliveryDate ? item.deliveryDate : null,
+      }))
+    );
+
+    // Registrar histórico de pedidos para previsões futuras
+    const today = new Date();
+    const dayOfWeek = today.getDay(); // 0 = Domingo, 6 = Sábado
+    const orderDate = today.toISOString().split("T")[0];
+
+    await db.insert(dailyOrderHistory).values(
+      items.map((item) => ({
+        productId: item.productId,
+        storeId: storeId,
+        orderDate: orderDate,
+        quantityOrdered: item.quantity,
+        stockAtTime: item.stock,
+        dayOfWeek: dayOfWeek,
       }))
     );
 
