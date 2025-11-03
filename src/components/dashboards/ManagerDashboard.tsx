@@ -478,7 +478,9 @@ export function ManagerDashboard() {
                 <Table>
                   <TableHeader>
                     <TableRow className="border-b-2">
-                      <TableHead className="w-[30%] font-semibold">Produto</TableHead>
+                      <TableHead className="w-[30%] font-semibold">
+                        Produto
+                      </TableHead>
                       <TableHead className="w-[15%] text-center font-semibold">
                         Estoque
                       </TableHead>
@@ -561,7 +563,9 @@ export function ManagerDashboard() {
                             {/* Previsão - Non-editable */}
                             <TableCell className="bg-muted/30 text-center">
                               <div className="inline-flex items-center gap-1.5 px-3 py-1 rounded-md bg-muted/50">
-                                <span className="text-xs text-muted-foreground">~</span>
+                                <span className="text-xs text-muted-foreground">
+                                  ~
+                                </span>
                                 <span className="font-semibold text-base">
                                   {forecast?.forecast || 0}
                                 </span>
@@ -726,7 +730,9 @@ export function ManagerDashboard() {
                               Previsão
                             </Label>
                             <div className="h-10 flex items-center justify-center rounded-md bg-muted/30 border">
-                              <span className="text-xs text-muted-foreground mr-1">~</span>
+                              <span className="text-xs text-muted-foreground mr-1">
+                                ~
+                              </span>
                               <span className="font-semibold">
                                 {forecast?.forecast || 0}
                               </span>
