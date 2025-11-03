@@ -60,6 +60,15 @@ export const products = pgTable("products", {
   isClassA: boolean("is_class_a").default(false).notNull(),
 });
 
+export const productForecasts = pgTable("product_forecasts", {
+  id: serial("id").primaryKey(),
+  productId: integer("product_id")
+    .notNull()
+    .references(() => products.id)
+    .unique(),
+  averageDailyForecast: integer("average_daily_forecast").notNull(),
+});
+
 export const salesHistory = pgTable("sales_history", {
   id: serial("id").primaryKey(),
   productId: integer("product_id")
@@ -68,13 +77,6 @@ export const salesHistory = pgTable("sales_history", {
   year: integer("year").notNull(),
   month: varchar("month", { length: 3 }).notNull(),
   total: integer("total").notNull(),
-});
-
-export const dailyInsight = pgTable("daily_insight", {
-  id: serial("id").primaryKey(),
-  date: date("date").notNull().unique(),
-  insight: text("insight").notNull(),
-  createdAt: timestamp("created_at").defaultNow().notNull(),
 });
 
 export const orders = pgTable("orders", {
@@ -173,10 +175,24 @@ export const storesRelations = relations(stores, ({ many }) => ({
   orders: many(orders),
 }));
 
-export const productsRelations = relations(products, ({ many }) => ({
+export const productsRelations = relations(products, ({ one, many }) => ({
   orderItems: many(orderItems),
   salesHistory: many(salesHistory),
+  forecast: one(productForecasts, {
+    fields: [products.id],
+    references: [productForecasts.productId],
+  }),
 }));
+
+export const productForecastsRelations = relations(
+  productForecasts,
+  ({ one }) => ({
+    product: one(products, {
+      fields: [productForecasts.productId],
+      references: [products.id],
+    }),
+  })
+);
 
 export const ordersRelations = relations(orders, ({ one, many }) => ({
   store: one(stores, {

@@ -25,7 +25,6 @@ import {
 import { useAuth } from "@/lib/auth-context";
 import { toast } from "sonner";
 import { OrderSummaryDialog } from "@/components/orders/OrderSummaryDialog";
-import { DailyInsightCard } from "./DailyInsightCard";
 import {
   Search,
   ShoppingCart,
@@ -64,6 +63,12 @@ interface EncomendaInfo {
   deliveryDate: string;
 }
 
+interface ProductForecast {
+  productId: number;
+  forecast: number;
+  suggestedProduction: number;
+}
+
 export function ManagerDashboard() {
   const { user } = useAuth();
   const [products, setProducts] = useState<Product[]>([]);
@@ -81,6 +86,9 @@ export function ManagerDashboard() {
   const [suggestions, setSuggestions] = useState<Map<number, number>>(
     new Map()
   );
+  const [forecasts, setForecasts] = useState<Map<number, ProductForecast>>(
+    new Map()
+  );
   const [isLoading, setIsLoading] = useState(true);
   const [searchTerm, setSearchTerm] = useState("");
   const [activeTab, setActiveTab] = useState<"vitrine" | "encomenda">(
@@ -91,6 +99,13 @@ export function ManagerDashboard() {
   useEffect(() => {
     fetchProducts();
   }, []);
+
+  // Fetch recommendations whenever order items change
+  useEffect(() => {
+    if (orderItems.size > 0) {
+      fetchRecommendations();
+    }
+  }, [orderItems]);
 
   const fetchProducts = async () => {
     try {
@@ -118,6 +133,39 @@ export function ManagerDashboard() {
       toast.error("Erro ao carregar produtos");
     } finally {
       setIsLoading(false);
+    }
+  };
+
+  const fetchRecommendations = async () => {
+    try {
+      const items = Array.from(orderItems.values()).map((item) => ({
+        productId: item.productId,
+        stock: item.stock,
+        orders: item.quantity,
+      }));
+
+      const res = await fetch("/api/recommendations", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ items }),
+      });
+
+      if (res.ok) {
+        const data = await res.json();
+        if (data.success && data.recommendations) {
+          const newForecasts = new Map<number, ProductForecast>();
+          data.recommendations.forEach((rec: any) => {
+            newForecasts.set(rec.productId, {
+              productId: rec.productId,
+              forecast: rec.forecast,
+              suggestedProduction: rec.suggestedProduction,
+            });
+          });
+          setForecasts(newForecasts);
+        }
+      }
+    } catch (error) {
+      console.error("Error fetching recommendations:", error);
     }
   };
 
@@ -344,9 +392,6 @@ export function ManagerDashboard() {
         )}
       </div>
 
-      {/* Insight Estratégico de IA */}
-      <DailyInsightCard />
-
       {/* Busca e Filtros */}
       <Card>
         <CardContent className="pt-6">
@@ -436,18 +481,21 @@ export function ManagerDashboard() {
               <CardContent className="p-0">
                 <Table>
                   <TableHeader>
-                    <TableRow>
-                      <TableHead className="w-[40%]">Produto</TableHead>
-                      <TableHead className="w-[15%] text-center">
-                        Estoque Atual
+                    <TableRow className="border-b-2">
+                      <TableHead className="w-[30%] font-semibold">Produto</TableHead>
+                      <TableHead className="w-[15%] text-center font-semibold">
+                        Estoque
                       </TableHead>
-                      <TableHead className="w-[20%] text-center">
-                        Quantidade
+                      <TableHead className="w-[15%] text-center font-semibold bg-muted/30">
+                        Previsão
                       </TableHead>
-                      <TableHead className="w-[15%] text-center">
-                        Sugestão IA
+                      <TableHead className="w-[15%] text-center font-semibold">
+                        Pedidos
                       </TableHead>
-                      <TableHead className="w-[10%]"></TableHead>
+                      <TableHead className="w-[20%] text-center font-semibold bg-primary/5">
+                        Produzir
+                      </TableHead>
+                      <TableHead className="w-[5%]"></TableHead>
                     </TableRow>
                   </TableHeader>
                   <TableBody>
@@ -462,7 +510,7 @@ export function ManagerDashboard() {
                       })
                       .map((product) => {
                         const item = orderItems.get(product.id);
-                        const suggestion = suggestions.get(product.id);
+                        const forecast = forecasts.get(product.id);
                         const hasQuantity = (item?.quantity || 0) > 0;
 
                         return (
@@ -489,6 +537,7 @@ export function ManagerDashboard() {
                               </div>
                             </TableCell>
 
+                            {/* Estoque Atual - Editable */}
                             <TableCell>
                               <Input
                                 type="number"
@@ -507,98 +556,55 @@ export function ManagerDashboard() {
                                     parseInt(e.target.value) || 0
                                   );
                                 }}
-                                className="h-9 text-center"
+                                className="h-9 text-center font-medium"
                                 autoComplete="off"
                                 onFocus={(e) => e.target.select()}
                               />
                             </TableCell>
 
-                            <TableCell>
-                              <div className="flex items-center gap-1 justify-center">
-                                <Button
-                                  type="button"
-                                  variant="outline"
-                                  size="icon"
-                                  className="h-9 w-9 shrink-0"
-                                  onClick={() => {
-                                    updateOrderItem(
-                                      product.id,
-                                      "type",
-                                      "Vitrine"
-                                    );
-                                    decrementQuantity(product.id);
-                                  }}
-                                  disabled={(item?.quantity || 0) === 0}
-                                  tabIndex={-1}
-                                >
-                                  <Minus className="h-3.5 w-3.5" />
-                                </Button>
-                                <Input
-                                  type="number"
-                                  min="0"
-                                  placeholder="0"
-                                  value={item?.quantity || ""}
-                                  onChange={(e) => {
-                                    updateOrderItem(
-                                      product.id,
-                                      "type",
-                                      "Vitrine"
-                                    );
-                                    updateOrderItem(
-                                      product.id,
-                                      "quantity",
-                                      parseInt(e.target.value) || 0
-                                    );
-                                  }}
-                                  className="h-9 text-center font-bold max-w-[80px]"
-                                  autoComplete="off"
-                                  onFocus={(e) => e.target.select()}
-                                />
-                                <Button
-                                  type="button"
-                                  variant="outline"
-                                  size="icon"
-                                  className="h-9 w-9 shrink-0"
-                                  onClick={() => {
-                                    updateOrderItem(
-                                      product.id,
-                                      "type",
-                                      "Vitrine"
-                                    );
-                                    incrementQuantity(product.id);
-                                  }}
-                                  tabIndex={-1}
-                                >
-                                  <Plus className="h-3.5 w-3.5" />
-                                </Button>
+                            {/* Previsão - Non-editable */}
+                            <TableCell className="bg-muted/30 text-center">
+                              <div className="inline-flex items-center gap-1.5 px-3 py-1 rounded-md bg-muted/50">
+                                <span className="text-xs text-muted-foreground">~</span>
+                                <span className="font-semibold text-base">
+                                  {forecast?.forecast || 0}
+                                </span>
                               </div>
                             </TableCell>
 
-                            <TableCell className="text-center">
-                              {suggestion ? (
-                                <Button
-                                  type="button"
-                                  variant="outline"
-                                  size="sm"
-                                  onClick={() => {
-                                    updateOrderItem(
-                                      product.id,
-                                      "type",
-                                      "Vitrine"
-                                    );
-                                    applySuggestion(product.id);
-                                  }}
-                                  className="gap-1.5 border-amber-500/50 text-amber-700 hover:bg-amber-50"
-                                  tabIndex={-1}
-                                >
-                                  <Sparkles className="h-3 w-3 fill-amber-500" />
-                                  {suggestion}
-                                </Button>
-                              ) : (
-                                <span className="text-muted-foreground text-sm">
-                                  —
+                            {/* Encomendas - Editable */}
+                            <TableCell>
+                              <Input
+                                type="number"
+                                min="0"
+                                placeholder="0"
+                                value={item?.quantity || ""}
+                                onChange={(e) => {
+                                  updateOrderItem(
+                                    product.id,
+                                    "type",
+                                    "Vitrine"
+                                  );
+                                  updateOrderItem(
+                                    product.id,
+                                    "quantity",
+                                    parseInt(e.target.value) || 0
+                                  );
+                                }}
+                                className="h-9 text-center font-medium"
+                                autoComplete="off"
+                                onFocus={(e) => e.target.select()}
+                              />
+                            </TableCell>
+
+                            {/* Sugestão de Produção - Calculated */}
+                            <TableCell className="bg-primary/5 text-center">
+                              <div className="inline-flex items-center gap-2 px-4 py-1.5 rounded-md bg-primary/10 border border-primary/20">
+                                <Package className="h-4 w-4 text-primary" />
+                                <span className="font-bold text-lg text-primary">
+                                  {forecast?.suggestedProduction || 0}
                                 </span>
-                              )}
+                              </div>
                             </TableCell>
 
                             <TableCell>
@@ -645,7 +651,7 @@ export function ManagerDashboard() {
                 })
                 .map((product) => {
                   const item = orderItems.get(product.id);
-                  const suggestion = suggestions.get(product.id);
+                  const forecast = forecasts.get(product.id);
                   const hasQuantity = (item?.quantity || 0) > 0;
 
                   return (
@@ -680,26 +686,26 @@ export function ManagerDashboard() {
                             </Badge>
                           )}
                         </div>
-                        {suggestion && (
-                          <Button
-                            type="button"
-                            variant="outline"
-                            size="sm"
-                            onClick={() => {
-                              updateOrderItem(product.id, "type", "Vitrine");
-                              applySuggestion(product.id);
-                            }}
-                            className="w-full mt-2 gap-2 border-amber-500/50 text-amber-700 hover:bg-amber-50 hover:border-amber-500"
-                          >
-                            <Sparkles className="h-3.5 w-3.5 fill-amber-500" />
-                            Sugestão IA: {suggestion}
-                          </Button>
-                        )}
                       </CardHeader>
                       <CardContent className="space-y-3 pt-0">
+                        {/* Suggestion Badge */}
+                        {forecast && forecast.suggestedProduction > 0 && (
+                          <div className="flex items-center justify-center gap-2 p-3 rounded-lg bg-primary/5 border border-primary/20">
+                            <Package className="h-5 w-5 text-primary" />
+                            <div className="text-center">
+                              <div className="text-xs text-muted-foreground font-medium">
+                                Sugestão de Produção
+                              </div>
+                              <div className="text-2xl font-bold text-primary">
+                                {forecast.suggestedProduction}
+                              </div>
+                            </div>
+                          </div>
+                        )}
+
                         <div className="grid grid-cols-2 gap-3">
                           <div className="space-y-1.5">
-                            <Label className="text-xs text-muted-foreground">
+                            <Label className="text-xs text-muted-foreground font-medium">
                               Estoque
                             </Label>
                             <Input
@@ -715,20 +721,32 @@ export function ManagerDashboard() {
                                   parseInt(e.target.value) || 0
                                 );
                               }}
-                              className="h-9 text-center"
+                              className="h-10 text-center font-medium"
                             />
                           </div>
 
                           <div className="space-y-1.5">
-                            <Label className="text-xs text-muted-foreground">
-                              Pedir
+                            <Label className="text-xs text-muted-foreground font-medium">
+                              Previsão
+                            </Label>
+                            <div className="h-10 flex items-center justify-center rounded-md bg-muted/30 border">
+                              <span className="text-xs text-muted-foreground mr-1">~</span>
+                              <span className="font-semibold">
+                                {forecast?.forecast || 0}
+                              </span>
+                            </div>
+                          </div>
+
+                          <div className="col-span-2 space-y-1.5">
+                            <Label className="text-xs text-muted-foreground font-medium">
+                              Pedidos
                             </Label>
                             <div className="flex items-center gap-1">
                               <Button
                                 type="button"
                                 variant="outline"
                                 size="icon"
-                                className="h-9 w-9 shrink-0"
+                                className="h-10 w-10 shrink-0"
                                 onClick={() => {
                                   updateOrderItem(
                                     product.id,
@@ -739,7 +757,7 @@ export function ManagerDashboard() {
                                 }}
                                 disabled={(item?.quantity || 0) === 0}
                               >
-                                <Minus className="h-3.5 w-3.5" />
+                                <Minus className="h-4 w-4" />
                               </Button>
                               <Input
                                 type="number"
@@ -758,13 +776,13 @@ export function ManagerDashboard() {
                                     parseInt(e.target.value) || 0
                                   );
                                 }}
-                                className="h-9 text-center font-bold"
+                                className="h-10 text-center font-bold text-base"
                               />
                               <Button
                                 type="button"
                                 variant="outline"
                                 size="icon"
-                                className="h-9 w-9 shrink-0"
+                                className="h-10 w-10 shrink-0"
                                 onClick={() => {
                                   updateOrderItem(
                                     product.id,
@@ -774,7 +792,7 @@ export function ManagerDashboard() {
                                   incrementQuantity(product.id);
                                 }}
                               >
-                                <Plus className="h-3.5 w-3.5" />
+                                <Plus className="h-4 w-4" />
                               </Button>
                             </div>
                           </div>
