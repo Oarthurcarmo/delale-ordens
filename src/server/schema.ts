@@ -79,6 +79,20 @@ export const salesHistory = pgTable("sales_history", {
   total: integer("total").notNull(),
 });
 
+export const dailyOrderHistory = pgTable("daily_order_history", {
+  id: serial("id").primaryKey(),
+  productId: integer("product_id")
+    .notNull()
+    .references(() => products.id),
+  storeId: integer("store_id")
+    .notNull()
+    .references(() => stores.id),
+  orderDate: varchar("order_date", { length: 10 }).notNull(),
+  quantityOrdered: integer("quantity_ordered").notNull(),
+  stockAtTime: integer("stock_at_time").notNull(),
+  dayOfWeek: integer("day_of_week").notNull(),
+});
+
 export const orders = pgTable("orders", {
   id: uuid("id").defaultRandom().primaryKey(),
   code: text("code").notNull().unique(),
@@ -266,3 +280,17 @@ export const salesHistoryRelations = relations(salesHistory, ({ one }) => ({
     references: [products.id],
   }),
 }));
+
+export const dailyOrderHistoryRelations = relations(
+  dailyOrderHistory,
+  ({ one }) => ({
+    product: one(products, {
+      fields: [dailyOrderHistory.productId],
+      references: [products.id],
+    }),
+    store: one(stores, {
+      fields: [dailyOrderHistory.storeId],
+      references: [stores.id],
+    }),
+  })
+);
