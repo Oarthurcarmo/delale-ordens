@@ -126,6 +126,7 @@ export const orderItems = pgTable("order_items", {
   type: orderItemType("type").notNull(),
   clientName: varchar("client_name", { length: 256 }),
   deliveryDate: date("delivery_date"),
+  observation: varchar("observation", { length: 500 }),
 });
 
 export const editRequests = pgTable("edit_requests", {

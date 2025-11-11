@@ -18,7 +18,7 @@ import { useAuth } from "@/lib/auth-context";
 const managerLinks = [
   { href: "/dashboard", label: "Novo Pedido", icon: Home },
   { href: "/dashboard/orders", label: "Meus Pedidos", icon: ClipboardList },
-  { href: "/dashboard/insights", label: "Insights Diários", icon: TrendingUp },
+  
   /*{
     href: "/dashboard/sales-history",
     label: "Histórico de Vendas",
@@ -38,7 +38,6 @@ const supervisorLinks = [
     label: "Edições de Itens",
     icon: CheckSquare,
   },
-  { href: "/dashboard/insights", label: "Insights Diários", icon: TrendingUp },
 ];
 
 const ownerLinks = [

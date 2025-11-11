@@ -21,6 +21,7 @@ export const orderItemSchema = z.object({
   type: z.enum(["Vitrine", "Encomenda"]),
   clientName: z.string().optional(),
   deliveryDate: z.string().optional(),
+  observation: z.string().optional(),
 });
 
 export const createOrderSchema = z.object({

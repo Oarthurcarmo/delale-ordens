@@ -42,6 +42,7 @@ interface OrderItemData {
   type: "Vitrine" | "Encomenda";
   clientName?: string;
   deliveryDate?: string;
+  observation?: string;
 }
 
 interface ProductForecast {
@@ -208,15 +209,14 @@ export function ManagerDashboard() {
       return;
     }
 
-    // Validar encomendas
+    // Validar encomendas - verificar se tem cliente e data quando houver quantidade
     const invalidEncomendas = itemsWithQuantity.filter(
-      (item) =>
-        item.type === "Encomenda" && (!item.clientName || !item.deliveryDate)
+      (item) => !item.clientName || !item.deliveryDate
     );
 
     if (invalidEncomendas.length > 0) {
       toast.error(
-        "Preencha os dados do cliente para todos os itens de encomenda"
+        "Preencha o nome do cliente e a data de entrega para todos os produtos com encomendas"
       );
       return;
     }
@@ -240,9 +240,9 @@ export function ManagerDashboard() {
           stock: item.stock,
           quantity: item.quantity,
           type: item.type,
-          clientName: item.type === "Encomenda" ? item.clientName : undefined,
-          deliveryDate:
-            item.type === "Encomenda" ? item.deliveryDate : undefined,
+          clientName: item.clientName,
+          deliveryDate: item.deliveryDate,
+          observation: item.observation,
         }));
 
       const response = await fetch("/api/orders", {
@@ -264,10 +264,12 @@ export function ManagerDashboard() {
         setSearchTerm("");
       } else {
         const error = await response.json();
+        console.error("Erro ao criar pedido:", error);
         toast.error(error.message || "Erro ao criar pedido");
       }
-    } catch {
-      toast.error("Erro ao enviar pedido");
+    } catch (error) {
+      console.error("Erro ao enviar pedido:", error);
+      toast.error("Erro ao enviar pedido. Verifique os dados e tente novamente.");
     } finally {
       setIsSubmitting(false);
     }
@@ -401,23 +403,26 @@ export function ManagerDashboard() {
             <Table>
               <TableHeader>
                 <TableRow className="border-b-2">
-                  <TableHead className="w-[25%] font-semibold">
+                  <TableHead className="w-[20%] font-semibold">
                     Produto
                   </TableHead>
-                  <TableHead className="w-[12%] text-center font-semibold">
+                  <TableHead className="w-[10%] text-center font-semibold">
                     Estoque Atual
                   </TableHead>
-                  <TableHead className="w-[13%] text-center font-semibold bg-muted/30">
+                  <TableHead className="w-[10%] text-center font-semibold bg-muted/30">
                     Previsão
                   </TableHead>
-                  <TableHead className="w-[13%] text-center font-semibold">
+                  <TableHead className="w-[10%] text-center font-semibold">
                     Encomendas
                   </TableHead>
-                  <TableHead className="w-[17%] text-center font-semibold bg-primary/5">
+                  <TableHead className="w-[15%] text-center font-semibold bg-primary/5">
                     Sugestão de Produção
                   </TableHead>
-                  <TableHead className="w-[20%] text-center font-semibold bg-green-50 dark:bg-green-950/20">
+                  <TableHead className="w-[15%] text-center font-semibold bg-green-50 dark:bg-green-950/20">
                     Pedidos para Produção
+                  </TableHead>
+                  <TableHead className="w-[20%] text-center font-semibold">
+                    Detalhes da Encomenda
                   </TableHead>
                 </TableRow>
               </TableHeader>
@@ -518,6 +523,79 @@ export function ManagerDashboard() {
                           autoComplete="off"
                           onFocus={(e) => e.target.select()}
                         />
+                      </TableCell>
+
+                      {/* Detalhes da Encomenda */}
+                      <TableCell className="p-2">
+                        {hasQuantity ? (
+                          <div className="space-y-1.5 min-w-[200px]">
+                            {/* Cliente */}
+                            <div className="flex items-center gap-1.5">
+                              <span className="text-xs text-muted-foreground shrink-0">
+                                👤
+                              </span>
+                              <Input
+                                type="text"
+                                placeholder="Nome do cliente"
+                                value={item?.clientName || ""}
+                                onChange={(e) => {
+                                  updateOrderItem(
+                                    product.id,
+                                    "clientName",
+                                    e.target.value
+                                  );
+                                }}
+                                className="h-7 text-xs flex-1"
+                                autoComplete="off"
+                              />
+                            </div>
+
+                            {/* Data de Entrega */}
+                            <div className="flex items-center gap-1.5">
+                              <span className="text-xs text-muted-foreground shrink-0">
+                                📅
+                              </span>
+                              <Input
+                                type="date"
+                                value={item?.deliveryDate || ""}
+                                onChange={(e) => {
+                                  updateOrderItem(
+                                    product.id,
+                                    "deliveryDate",
+                                    e.target.value
+                                  );
+                                }}
+                                className="h-7 text-xs flex-1"
+                                min={new Date().toISOString().split("T")[0]}
+                              />
+                            </div>
+
+                            {/* Observação */}
+                            <div className="flex items-center gap-1.5">
+                              <span className="text-xs text-muted-foreground shrink-0">
+                                💬
+                              </span>
+                              <Input
+                                type="text"
+                                placeholder="Obs (opcional)"
+                                value={item?.observation || ""}
+                                onChange={(e) => {
+                                  updateOrderItem(
+                                    product.id,
+                                    "observation",
+                                    e.target.value
+                                  );
+                                }}
+                                className="h-7 text-xs flex-1"
+                                autoComplete="off"
+                              />
+                            </div>
+                          </div>
+                        ) : (
+                          <span className="text-muted-foreground text-sm">
+                            —
+                          </span>
+                        )}
                       </TableCell>
                     </TableRow>
                   );
@@ -659,6 +737,70 @@ export function ManagerDashboard() {
                         onFocus={(e) => e.target.select()}
                       />
                     </div>
+
+                    {/* Detalhes da Encomenda - Cards */}
+                    {hasQuantity && (
+                      <>
+                        <div className="col-span-2 space-y-1.5 pt-2 border-t">
+                          <Label className="text-xs text-muted-foreground font-medium">
+                            Nome do Cliente *
+                          </Label>
+                          <Input
+                            type="text"
+                            placeholder="Nome do cliente"
+                            value={item?.clientName || ""}
+                            onChange={(e) => {
+                              updateOrderItem(
+                                product.id,
+                                "clientName",
+                                e.target.value
+                              );
+                            }}
+                            className="h-9"
+                            autoComplete="off"
+                          />
+                        </div>
+
+                        <div className="col-span-2 space-y-1.5">
+                          <Label className="text-xs text-muted-foreground font-medium">
+                            Data de Entrega *
+                          </Label>
+                          <Input
+                            type="date"
+                            value={item?.deliveryDate || ""}
+                            onChange={(e) => {
+                              updateOrderItem(
+                                product.id,
+                                "deliveryDate",
+                                e.target.value
+                              );
+                            }}
+                            className="h-9"
+                            min={new Date().toISOString().split("T")[0]}
+                          />
+                        </div>
+
+                        <div className="col-span-2 space-y-1.5">
+                          <Label className="text-xs text-muted-foreground font-medium">
+                            Observação (opcional)
+                          </Label>
+                          <Input
+                            type="text"
+                            placeholder="Ex: sem açúcar, decoração especial..."
+                            value={item?.observation || ""}
+                            onChange={(e) => {
+                              updateOrderItem(
+                                product.id,
+                                "observation",
+                                e.target.value
+                              );
+                            }}
+                            className="h-9"
+                            autoComplete="off"
+                          />
+                        </div>
+                      </>
+                    )}
                   </div>
                 </CardContent>
               </Card>
