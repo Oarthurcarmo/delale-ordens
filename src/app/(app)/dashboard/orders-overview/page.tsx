@@ -22,7 +22,7 @@ import {
   SelectTrigger,
   SelectValue,
 } from "@/components/ui/select";
-import { Printer, ChevronDown, ChevronUp } from "lucide-react";
+import { Printer, ChevronDown, ChevronUp, Loader2 } from "lucide-react";
 import { ProductionStatusBadge } from "@/components/orders/ProductionStatusBadge";
 import { ProductionStatusManager } from "@/components/orders/ProductionStatusManager";
 import { OrderDetailDialog } from "@/components/orders/OrderDetailDialog";
@@ -86,6 +86,7 @@ export default function OrdersOverviewPage() {
   const [dateFilter, setDateFilter] = useState<string>("");
   const [selectedOrder, setSelectedOrder] = useState<Order | null>(null);
   const [showOrderDetail, setShowOrderDetail] = useState(false);
+  const [isPrinting, setIsPrinting] = useState<boolean>(false);
 
   const toggleOrderExpansion = (orderId: string) => {
     setExpandedOrders((prev) => {
@@ -100,7 +101,17 @@ export default function OrdersOverviewPage() {
   };
 
   const handlePrintAll = () => {
-    window.print();
+    setIsPrinting(true);
+    
+    // Pequeno delay para mostrar o feedback visual
+    setTimeout(() => {
+      window.print();
+      
+      // Reset do estado após a janela de impressão
+      setTimeout(() => {
+        setIsPrinting(false);
+      }, 500);
+    }, 300);
   };
 
   const handleViewOrderDetails = (order: Order) => {
@@ -140,9 +151,22 @@ export default function OrdersOverviewPage() {
             Visualize e gerencie todos os pedidos de todas as filiais
           </p>
         </div>
-        <Button onClick={handlePrintAll} className="print:hidden">
-          <Printer className="mr-2 h-4 w-4" />
-          Imprimir Todos
+        <Button 
+          onClick={handlePrintAll} 
+          className="print:hidden"
+          disabled={isPrinting}
+        >
+          {isPrinting ? (
+            <>
+              <Loader2 className="mr-2 h-4 w-4 animate-spin" />
+              Preparando...
+            </>
+          ) : (
+            <>
+              <Printer className="mr-2 h-4 w-4" />
+              Imprimir Todos
+            </>
+          )}
         </Button>
       </div>
 

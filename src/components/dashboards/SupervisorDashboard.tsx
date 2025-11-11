@@ -13,7 +13,7 @@ import {
   TableRow,
 } from "../ui/table";
 import { Badge } from "../ui/badge";
-import { Printer, ChevronDown, ChevronUp } from "lucide-react";
+import { Printer, ChevronDown, ChevronUp, Loader2 } from "lucide-react";
 import { ProductionStatusManager } from "../orders/ProductionStatusManager";
 import { ProductionStatusBadge } from "../orders/ProductionStatusBadge";
 import { Input } from "../ui/input";
@@ -81,6 +81,7 @@ export function SupervisorDashboard() {
   const [expandedOrders, setExpandedOrders] = useState<Set<string>>(new Set());
   const [storeFilter, setStoreFilter] = useState<string>("all");
   const [dateFilter, setDateFilter] = useState<string>("");
+  const [isPrinting, setIsPrinting] = useState<boolean>(false);
 
   const toggleOrderExpansion = (orderId: string) => {
     setExpandedOrders((prev) => {
@@ -95,7 +96,17 @@ export function SupervisorDashboard() {
   };
 
   const handlePrintAll = () => {
-    window.print();
+    setIsPrinting(true);
+    
+    // Pequeno delay para mostrar o feedback visual
+    setTimeout(() => {
+      window.print();
+      
+      // Reset do estado após a janela de impressão
+      setTimeout(() => {
+        setIsPrinting(false);
+      }, 500);
+    }, 300);
   };
 
   const filteredOrders = orders?.filter((order) => {
@@ -142,9 +153,22 @@ export function SupervisorDashboard() {
             Visualize os pedidos de todas as filiais.
           </p>
         </div>
-        <Button onClick={handlePrintAll} className="print:hidden">
-          <Printer className="mr-2 h-4 w-4" />
-          Imprimir Todos
+        <Button 
+          onClick={handlePrintAll} 
+          className="print:hidden"
+          disabled={isPrinting}
+        >
+          {isPrinting ? (
+            <>
+              <Loader2 className="mr-2 h-4 w-4 animate-spin" />
+              Preparando...
+            </>
+          ) : (
+            <>
+              <Printer className="mr-2 h-4 w-4" />
+              Imprimir Todos
+            </>
+          )}
         </Button>
       </div>
 

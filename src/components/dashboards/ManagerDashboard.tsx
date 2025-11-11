@@ -1,6 +1,6 @@
 "use client";
 
-import { useState, useEffect, useMemo, useCallback } from "react";
+import { useState, useEffect, useMemo } from "react";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
@@ -25,14 +25,12 @@ import {
 import { useAuth } from "@/lib/auth-context";
 import { toast } from "sonner";
 import { OrderSummaryDialog } from "@/components/orders/OrderSummaryDialog";
-import { DailyInsightCard } from "./DailyInsightCard";
 import {
   Search,
   ShoppingCart,
   Package,
   CalendarDays,
   User,
-  Sparkles,
   Plus,
   Minus,
   Check,
@@ -64,13 +62,19 @@ interface EncomendaInfo {
   deliveryDate: string;
 }
 
-interface ProductSuggestion {
+interface ProductForecast {
+  productId: number;
+  forecast: number;
+  suggestedProduction: number;
+}
+
+interface RecommendationResponse {
   productId: number;
   productName: string;
-  suggestion: number;
-  confidence: "stock" | "intermediate" | "advanced";
-  confidenceLabel: string;
-  daysOfHistory: number;
+  forecast: number;
+  stock: number;
+  orders: number;
+  suggestedProduction: number;
 }
 
 export function ManagerDashboard() {
@@ -79,7 +83,6 @@ export function ManagerDashboard() {
   const [orderItems, setOrderItems] = useState<Map<number, OrderItemData>>(
     new Map()
   );
-  const [stocks, setStocks] = useState<Map<number, number>>(new Map());
   const [showEncomendaDialog, setShowEncomendaDialog] = useState(false);
   const [currentProductId, setCurrentProductId] = useState<number | null>(null);
   const [encomendaInfo, setEncomendaInfo] = useState<EncomendaInfo>({
@@ -88,11 +91,10 @@ export function ManagerDashboard() {
   });
   const [showSummary, setShowSummary] = useState(false);
   const [isSubmitting, setIsSubmitting] = useState(false);
-  const [suggestions, setSuggestions] = useState<
-    Map<number, ProductSuggestion>
-  >(new Map());
+  const [forecasts, setForecasts] = useState<Map<number, ProductForecast>>(
+    new Map()
+  );
   const [isLoading, setIsLoading] = useState(true);
-  const [isLoadingSuggestions, setIsLoadingSuggestions] = useState(false);
   const [searchTerm, setSearchTerm] = useState("");
   const [activeTab, setActiveTab] = useState<"vitrine" | "encomenda">(
     "vitrine"
@@ -103,6 +105,46 @@ export function ManagerDashboard() {
     fetchProducts();
   }, []);
 
+  // Fetch recommendations whenever order items change
+  useEffect(() => {
+    if (orderItems.size > 0) {
+      const items = Array.from(orderItems.values()).map((item) => ({
+        productId: item.productId,
+        stock: item.stock,
+        orders: item.quantity,
+      }));
+
+      const fetchRecommendations = async () => {
+        try {
+          const res = await fetch("/api/recommendations", {
+            method: "POST",
+            headers: { "Content-Type": "application/json" },
+            body: JSON.stringify({ items }),
+          });
+
+          if (res.ok) {
+            const data = await res.json();
+            if (data.success && data.recommendations) {
+              const newForecasts = new Map<number, ProductForecast>();
+              data.recommendations.forEach((rec: RecommendationResponse) => {
+                newForecasts.set(rec.productId, {
+                  productId: rec.productId,
+                  forecast: rec.forecast,
+                  suggestedProduction: rec.suggestedProduction,
+                });
+              });
+              setForecasts(newForecasts);
+            }
+          }
+        } catch (error) {
+          console.error("Error fetching recommendations:", error);
+        }
+      };
+
+      fetchRecommendations();
+    }
+  }, [orderItems]);
+
   const fetchProducts = async () => {
     try {
       const res = await fetch("/api/products");
@@ -112,7 +154,6 @@ export function ManagerDashboard() {
 
         // Inicializar orderItems com valores padrão
         const initialItems = new Map<number, OrderItemData>();
-        const initialStocks = new Map<number, number>();
         data.forEach((product: Product) => {
           initialItems.set(product.id, {
             productId: product.id,
@@ -121,10 +162,8 @@ export function ManagerDashboard() {
             quantity: 0,
             type: "Vitrine",
           });
-          initialStocks.set(product.id, 0);
         });
         setOrderItems(initialItems);
-        setStocks(initialStocks);
       } else {
         toast.error("Erro ao carregar produtos");
       }
@@ -135,67 +174,11 @@ export function ManagerDashboard() {
     }
   };
 
-  const fetchSuggestions = useCallback(async () => {
-    try {
-      setIsLoadingSuggestions(true);
-
-      // Preparar dados de estoque atual para enviar
-      const stocksToSend: { [key: number]: number } = {};
-      stocks.forEach((stock, productId) => {
-        if (stock > 0) {
-          stocksToSend[productId] = stock;
-        }
-      });
-
-      const res = await fetch("/api/predictions", {
-        method: "POST",
-        headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ stocks: stocksToSend }),
-      });
-
-      if (res.ok) {
-        const data = await res.json();
-        if (data.success && data.suggestions) {
-          const suggestionsMap = new Map<number, ProductSuggestion>();
-          data.suggestions.forEach((suggestion: ProductSuggestion) => {
-            suggestionsMap.set(suggestion.productId, suggestion);
-          });
-          setSuggestions(suggestionsMap);
-        }
-      }
-    } catch (error) {
-      console.error("Erro ao carregar sugestões:", error);
-      // Não exibir erro ao usuário para não poluir a UI
-    } finally {
-      setIsLoadingSuggestions(false);
-    }
-  }, [stocks]);
-
-  // Recalcular sugestões quando estoques mudarem (com debounce)
-  useEffect(() => {
-    const timeoutId = setTimeout(() => {
-      // Só buscar sugestões se já tiver produtos carregados
-      if (products.length > 0) {
-        fetchSuggestions();
-      }
-    }, 800); // 800ms de debounce
-
-    return () => clearTimeout(timeoutId);
-  }, [stocks, products.length, fetchSuggestions]);
-
   const updateOrderItem = (
     productId: number,
     field: keyof OrderItemData,
     value: string | number
   ) => {
-    if (field === "stock") {
-      setStocks((prev) => {
-        const newStocks = new Map(prev);
-        newStocks.set(productId, Number(value) || 0);
-        return newStocks;
-      });
-    }
-
     setOrderItems((prev) => {
       const newItems = new Map(prev);
       const item = newItems.get(productId);
@@ -249,27 +232,6 @@ export function ManagerDashboard() {
       toast.success("Informações da encomenda salvas!");
     }
     setShowEncomendaDialog(false);
-  };
-
-  const applySuggestion = (productId: number) => {
-    const suggestion = suggestions.get(productId);
-    if (suggestion) {
-      updateOrderItem(productId, "quantity", suggestion.suggestion);
-      toast.success("Sugestão aplicada!");
-    }
-  };
-
-  const getConfidenceBadgeColor = (confidence: string) => {
-    switch (confidence) {
-      case "stock":
-        return "bg-gray-100 text-gray-700 dark:bg-gray-800 dark:text-gray-300";
-      case "intermediate":
-        return "bg-amber-100 text-amber-700 dark:bg-amber-900/30 dark:text-amber-300";
-      case "advanced":
-        return "bg-green-100 text-green-700 dark:bg-green-900/30 dark:text-green-300";
-      default:
-        return "bg-gray-100 text-gray-700";
-    }
   };
 
   const handleOpenSummary = () => {
@@ -334,7 +296,6 @@ export function ManagerDashboard() {
 
         // Resetar formulário
         fetchProducts();
-        setSuggestions(new Map());
         setShowSummary(false);
         setSearchTerm("");
       } else {
@@ -427,9 +388,6 @@ export function ManagerDashboard() {
         )}
       </div>
 
-      {/* Insight Estratégico de IA */}
-      <DailyInsightCard />
-
       {/* Busca e Filtros */}
       <Card>
         <CardContent className="pt-6">
@@ -519,18 +477,23 @@ export function ManagerDashboard() {
               <CardContent className="p-0">
                 <Table>
                   <TableHeader>
-                    <TableRow>
-                      <TableHead className="w-[40%]">Produto</TableHead>
-                      <TableHead className="w-[15%] text-center">
-                        Estoque Atual
+                    <TableRow className="border-b-2">
+                      <TableHead className="w-[30%] font-semibold">
+                        Produto
                       </TableHead>
-                      <TableHead className="w-[20%] text-center">
-                        Quantidade
+                      <TableHead className="w-[15%] text-center font-semibold">
+                        Estoque
                       </TableHead>
-                      <TableHead className="w-[15%] text-center">
-                        Sugestão IA
+                      <TableHead className="w-[15%] text-center font-semibold bg-muted/30">
+                        Previsão
                       </TableHead>
-                      <TableHead className="w-[10%]"></TableHead>
+                      <TableHead className="w-[15%] text-center font-semibold">
+                        Pedidos
+                      </TableHead>
+                      <TableHead className="w-[20%] text-center font-semibold bg-primary/5">
+                        Produzir
+                      </TableHead>
+                      <TableHead className="w-[5%]"></TableHead>
                     </TableRow>
                   </TableHeader>
                   <TableBody>
@@ -545,7 +508,7 @@ export function ManagerDashboard() {
                       })
                       .map((product) => {
                         const item = orderItems.get(product.id);
-                        const suggestion = suggestions.get(product.id);
+                        const forecast = forecasts.get(product.id);
                         const hasQuantity = (item?.quantity || 0) > 0;
 
                         return (
@@ -572,6 +535,7 @@ export function ManagerDashboard() {
                               </div>
                             </TableCell>
 
+                            {/* Estoque Atual - Editable */}
                             <TableCell>
                               <Input
                                 type="number"
@@ -590,120 +554,57 @@ export function ManagerDashboard() {
                                     parseInt(e.target.value) || 0
                                   );
                                 }}
-                                className="h-9 text-center"
+                                className="h-9 text-center font-medium"
                                 autoComplete="off"
                                 onFocus={(e) => e.target.select()}
                               />
                             </TableCell>
 
-                            <TableCell>
-                              <div className="flex items-center gap-1 justify-center">
-                                <Button
-                                  type="button"
-                                  variant="outline"
-                                  size="icon"
-                                  className="h-9 w-9 shrink-0"
-                                  onClick={() => {
-                                    updateOrderItem(
-                                      product.id,
-                                      "type",
-                                      "Vitrine"
-                                    );
-                                    decrementQuantity(product.id);
-                                  }}
-                                  disabled={(item?.quantity || 0) === 0}
-                                  tabIndex={-1}
-                                >
-                                  <Minus className="h-3.5 w-3.5" />
-                                </Button>
-                                <Input
-                                  type="number"
-                                  min="0"
-                                  placeholder="0"
-                                  value={item?.quantity || ""}
-                                  onChange={(e) => {
-                                    updateOrderItem(
-                                      product.id,
-                                      "type",
-                                      "Vitrine"
-                                    );
-                                    updateOrderItem(
-                                      product.id,
-                                      "quantity",
-                                      parseInt(e.target.value) || 0
-                                    );
-                                  }}
-                                  className="h-9 text-center font-bold max-w-[80px]"
-                                  autoComplete="off"
-                                  onFocus={(e) => e.target.select()}
-                                />
-                                <Button
-                                  type="button"
-                                  variant="outline"
-                                  size="icon"
-                                  className="h-9 w-9 shrink-0"
-                                  onClick={() => {
-                                    updateOrderItem(
-                                      product.id,
-                                      "type",
-                                      "Vitrine"
-                                    );
-                                    incrementQuantity(product.id);
-                                  }}
-                                  tabIndex={-1}
-                                >
-                                  <Plus className="h-3.5 w-3.5" />
-                                </Button>
+                            {/* Previsão - Non-editable */}
+                            <TableCell className="bg-muted/30 text-center">
+                              <div className="inline-flex items-center gap-1.5 px-3 py-1 rounded-md bg-muted/50">
+                                <span className="text-xs text-muted-foreground">
+                                  ~
+                                </span>
+                                <span className="font-semibold text-base">
+                                  {forecast?.forecast || 0}
+                                </span>
                               </div>
                             </TableCell>
 
-                            <TableCell className="text-center">
-                              {isLoadingSuggestions ? (
-                                <div className="flex flex-col items-center gap-1">
-                                  <div className="animate-spin rounded-full h-5 w-5 border-2 border-amber-500 border-t-transparent"></div>
-                                  <span className="text-[10px] text-muted-foreground">
-                                    Calculando...
-                                  </span>
-                                </div>
-                              ) : suggestion ? (
-                                suggestion.suggestion > 0 ? (
-                                  <div className="flex flex-col items-center gap-1">
-                                    <Button
-                                      type="button"
-                                      variant="outline"
-                                      size="sm"
-                                      onClick={() => {
-                                        updateOrderItem(
-                                          product.id,
-                                          "type",
-                                          "Vitrine"
-                                        );
-                                        applySuggestion(product.id);
-                                      }}
-                                      className="gap-1.5 border-amber-500/50 text-amber-700 hover:bg-amber-50"
-                                      tabIndex={-1}
-                                    >
-                                      <Sparkles className="h-3 w-3 fill-amber-500" />
-                                      {suggestion.suggestion}
-                                    </Button>
-                                    <span
-                                      className={`text-[10px] px-1.5 py-0.5 rounded-full ${getConfidenceBadgeColor(
-                                        suggestion.confidence
-                                      )}`}
-                                    >
-                                      {suggestion.confidenceLabel}
-                                    </span>
-                                  </div>
-                                ) : (
-                                  <span className="text-xs text-green-600 dark:text-green-400 font-medium">
-                                    ✓ Estoque OK
-                                  </span>
-                                )
-                              ) : (
-                                <span className="text-muted-foreground text-sm">
-                                  —
+                            {/* Encomendas - Editable */}
+                            <TableCell>
+                              <Input
+                                type="number"
+                                min="0"
+                                placeholder="0"
+                                value={item?.quantity || ""}
+                                onChange={(e) => {
+                                  updateOrderItem(
+                                    product.id,
+                                    "type",
+                                    "Vitrine"
+                                  );
+                                  updateOrderItem(
+                                    product.id,
+                                    "quantity",
+                                    parseInt(e.target.value) || 0
+                                  );
+                                }}
+                                className="h-9 text-center font-medium"
+                                autoComplete="off"
+                                onFocus={(e) => e.target.select()}
+                              />
+                            </TableCell>
+
+                            {/* Sugestão de Produção - Calculated */}
+                            <TableCell className="bg-primary/5 text-center">
+                              <div className="inline-flex items-center gap-2 px-4 py-1.5 rounded-md bg-primary/10 border border-primary/20">
+                                <Package className="h-4 w-4 text-primary" />
+                                <span className="font-bold text-lg text-primary">
+                                  {forecast?.suggestedProduction || 0}
                                 </span>
-                              )}
+                              </div>
                             </TableCell>
 
                             <TableCell>
@@ -750,7 +651,7 @@ export function ManagerDashboard() {
                 })
                 .map((product) => {
                   const item = orderItems.get(product.id);
-                  const suggestion = suggestions.get(product.id);
+                  const forecast = forecasts.get(product.id);
                   const hasQuantity = (item?.quantity || 0) > 0;
 
                   return (
@@ -785,48 +686,26 @@ export function ManagerDashboard() {
                             </Badge>
                           )}
                         </div>
-                        {suggestion &&
-                          (suggestion.suggestion > 0 ? (
-                            <div className="space-y-1 mt-2">
-                              <Button
-                                type="button"
-                                variant="outline"
-                                size="sm"
-                                onClick={() => {
-                                  updateOrderItem(
-                                    product.id,
-                                    "type",
-                                    "Vitrine"
-                                  );
-                                  applySuggestion(product.id);
-                                }}
-                                className="w-full gap-2 border-amber-500/50 text-amber-700 hover:bg-amber-50 hover:border-amber-500"
-                              >
-                                <Sparkles className="h-3.5 w-3.5 fill-amber-500" />
-                                Sugestão IA: {suggestion.suggestion}
-                              </Button>
-                              <div className="flex justify-center">
-                                <span
-                                  className={`text-[10px] px-2 py-0.5 rounded-full ${getConfidenceBadgeColor(
-                                    suggestion.confidence
-                                  )}`}
-                                >
-                                  {suggestion.confidenceLabel}
-                                </span>
-                              </div>
-                            </div>
-                          ) : (
-                            <div className="mt-2 p-2 bg-green-50 dark:bg-green-950/20 border border-green-200 dark:border-green-800 rounded-md">
-                              <span className="text-xs text-green-600 dark:text-green-400 font-medium">
-                                ✓ Estoque suficiente
-                              </span>
-                            </div>
-                          ))}
                       </CardHeader>
                       <CardContent className="space-y-3 pt-0">
+                        {/* Suggestion Badge */}
+                        {forecast && forecast.suggestedProduction > 0 && (
+                          <div className="flex items-center justify-center gap-2 p-3 rounded-lg bg-primary/5 border border-primary/20">
+                            <Package className="h-5 w-5 text-primary" />
+                            <div className="text-center">
+                              <div className="text-xs text-muted-foreground font-medium">
+                                Sugestão de Produção
+                              </div>
+                              <div className="text-2xl font-bold text-primary">
+                                {forecast.suggestedProduction}
+                              </div>
+                            </div>
+                          </div>
+                        )}
+
                         <div className="grid grid-cols-2 gap-3">
                           <div className="space-y-1.5">
-                            <Label className="text-xs text-muted-foreground">
+                            <Label className="text-xs text-muted-foreground font-medium">
                               Estoque
                             </Label>
                             <Input
@@ -842,20 +721,34 @@ export function ManagerDashboard() {
                                   parseInt(e.target.value) || 0
                                 );
                               }}
-                              className="h-9 text-center"
+                              className="h-10 text-center font-medium"
                             />
                           </div>
 
                           <div className="space-y-1.5">
-                            <Label className="text-xs text-muted-foreground">
-                              Pedir
+                            <Label className="text-xs text-muted-foreground font-medium">
+                              Previsão
+                            </Label>
+                            <div className="h-10 flex items-center justify-center rounded-md bg-muted/30 border">
+                              <span className="text-xs text-muted-foreground mr-1">
+                                ~
+                              </span>
+                              <span className="font-semibold">
+                                {forecast?.forecast || 0}
+                              </span>
+                            </div>
+                          </div>
+
+                          <div className="col-span-2 space-y-1.5">
+                            <Label className="text-xs text-muted-foreground font-medium">
+                              Pedidos
                             </Label>
                             <div className="flex items-center gap-1">
                               <Button
                                 type="button"
                                 variant="outline"
                                 size="icon"
-                                className="h-9 w-9 shrink-0"
+                                className="h-10 w-10 shrink-0"
                                 onClick={() => {
                                   updateOrderItem(
                                     product.id,
@@ -866,7 +759,7 @@ export function ManagerDashboard() {
                                 }}
                                 disabled={(item?.quantity || 0) === 0}
                               >
-                                <Minus className="h-3.5 w-3.5" />
+                                <Minus className="h-4 w-4" />
                               </Button>
                               <Input
                                 type="number"
@@ -885,13 +778,13 @@ export function ManagerDashboard() {
                                     parseInt(e.target.value) || 0
                                   );
                                 }}
-                                className="h-9 text-center font-bold"
+                                className="h-10 text-center font-bold text-base"
                               />
                               <Button
                                 type="button"
                                 variant="outline"
                                 size="icon"
-                                className="h-9 w-9 shrink-0"
+                                className="h-10 w-10 shrink-0"
                                 onClick={() => {
                                   updateOrderItem(
                                     product.id,
@@ -901,7 +794,7 @@ export function ManagerDashboard() {
                                   incrementQuantity(product.id);
                                 }}
                               >
-                                <Plus className="h-3.5 w-3.5" />
+                                <Plus className="h-4 w-4" />
                               </Button>
                             </div>
                           </div>
@@ -922,15 +815,12 @@ export function ManagerDashboard() {
                 <Table>
                   <TableHeader>
                     <TableRow>
-                      <TableHead className="w-[25%]">Produto</TableHead>
+                      <TableHead className="w-[30%]">Produto</TableHead>
                       <TableHead className="w-[15%] text-center">
                         Quantidade
                       </TableHead>
-                      <TableHead className="w-[15%] text-center">
-                        Sugestão IA
-                      </TableHead>
-                      <TableHead className="w-[20%]">Cliente</TableHead>
-                      <TableHead className="w-[15%]">Data Entrega</TableHead>
+                      <TableHead className="w-[25%]">Cliente</TableHead>
+                      <TableHead className="w-[20%]">Data Entrega</TableHead>
                       <TableHead className="w-[10%]"></TableHead>
                     </TableRow>
                   </TableHeader>
@@ -1028,58 +918,6 @@ export function ManagerDashboard() {
                             </div>
                           </TableCell>
 
-                          <TableCell className="text-center">
-                            {(() => {
-                              const suggestion = suggestions.get(product.id);
-                              return isLoadingSuggestions ? (
-                                <div className="flex flex-col items-center gap-1">
-                                  <div className="animate-spin rounded-full h-5 w-5 border-2 border-amber-500 border-t-transparent"></div>
-                                  <span className="text-[10px] text-muted-foreground">
-                                    Calculando...
-                                  </span>
-                                </div>
-                              ) : suggestion ? (
-                                suggestion.suggestion > 0 ? (
-                                  <div className="flex flex-col items-center gap-1">
-                                    <Button
-                                      type="button"
-                                      variant="outline"
-                                      size="sm"
-                                      onClick={() => {
-                                        updateOrderItem(
-                                          product.id,
-                                          "type",
-                                          "Encomenda"
-                                        );
-                                        applySuggestion(product.id);
-                                      }}
-                                      className="gap-1.5 border-amber-500/50 text-amber-700 hover:bg-amber-50"
-                                      tabIndex={-1}
-                                    >
-                                      <Sparkles className="h-3 w-3 fill-amber-500" />
-                                      {suggestion.suggestion}
-                                    </Button>
-                                    <span
-                                      className={`text-[10px] px-1.5 py-0.5 rounded-full ${getConfidenceBadgeColor(
-                                        suggestion.confidence
-                                      )}`}
-                                    >
-                                      {suggestion.confidenceLabel}
-                                    </span>
-                                  </div>
-                                ) : (
-                                  <span className="text-xs text-green-600 dark:text-green-400 font-medium">
-                                    ✓ Estoque OK
-                                  </span>
-                                )
-                              ) : (
-                                <span className="text-muted-foreground text-sm">
-                                  —
-                                </span>
-                              );
-                            })()}
-                          </TableCell>
-
                           <TableCell>
                             {hasQuantity ? (
                               <Input
@@ -1171,7 +1009,6 @@ export function ManagerDashboard() {
                 const hasEncomendaInfo = !!(
                   item?.clientName && item?.deliveryDate
                 );
-                const suggestion = suggestions.get(product.id);
 
                 // Só mostrar se for encomenda OU se tiver sido adicionado como encomenda
                 if (!isEncomenda && hasQuantity) return null;
@@ -1205,53 +1042,6 @@ export function ManagerDashboard() {
                           </Badge>
                         )}
                       </div>
-                      {isLoadingSuggestions ? (
-                        <div className="mt-2 p-2 border border-amber-200 dark:border-amber-800 rounded-md bg-amber-50/50 dark:bg-amber-950/20">
-                          <div className="flex items-center justify-center gap-2">
-                            <div className="animate-spin rounded-full h-4 w-4 border-2 border-amber-500 border-t-transparent"></div>
-                            <span className="text-xs text-muted-foreground">
-                              Calculando sugestão...
-                            </span>
-                          </div>
-                        </div>
-                      ) : suggestion ? (
-                        suggestion.suggestion > 0 ? (
-                          <div className="space-y-1 mt-2">
-                            <Button
-                              type="button"
-                              variant="outline"
-                              size="sm"
-                              onClick={() => {
-                                updateOrderItem(
-                                  product.id,
-                                  "type",
-                                  "Encomenda"
-                                );
-                                applySuggestion(product.id);
-                              }}
-                              className="w-full gap-2 border-amber-500/50 text-amber-700 hover:bg-amber-50 hover:border-amber-500"
-                            >
-                              <Sparkles className="h-3.5 w-3.5 fill-amber-500" />
-                              Sugestão IA: {suggestion.suggestion}
-                            </Button>
-                            <div className="flex justify-center">
-                              <span
-                                className={`text-[10px] px-2 py-0.5 rounded-full ${getConfidenceBadgeColor(
-                                  suggestion.confidence
-                                )}`}
-                              >
-                                {suggestion.confidenceLabel}
-                              </span>
-                            </div>
-                          </div>
-                        ) : (
-                          <div className="mt-2 p-2 bg-green-50 dark:bg-green-950/20 border border-green-200 dark:border-green-800 rounded-md">
-                            <span className="text-xs text-green-600 dark:text-green-400 font-medium">
-                              ✓ Estoque suficiente
-                            </span>
-                          </div>
-                        )
-                      ) : null}
                     </CardHeader>
                     <CardContent className="space-y-3 pt-0">
                       <div className="space-y-1.5">
