@@ -12,14 +12,17 @@ export interface ProductRecommendation {
 }
 
 /**
- * Calculate production suggestion based on the Excel formula:
+ * Calculate production suggestion based on Excel formula:
  * 
- * IF (orders > forecast):
- *   production = orders + forecast - stock
- * ELSE:
- *   production = forecast - stock + orders
+ * If orders > forecast:
+ *   production = orders + (forecast × 0.8) - stock
+ * Else:
+ *   production = (forecast × 0.8) - stock + orders
  * 
- * @param forecast - Average daily forecast for the product
+ * Note: "Previsão" in the UI shows the full forecast value,
+ * but the calculation uses 80% of it (vitrine portion).
+ * 
+ * @param forecast - Average daily forecast for the product (Previsão)
  * @param stock - Current stock (Estoque Atual)
  * @param orders - Current orders/encomendas
  * @returns Suggested production quantity
@@ -30,13 +33,16 @@ export function calculateProductionSuggestion(
   orders: number
 ): number {
   let production: number;
+  
+  // Use 80% of forecast (vitrine portion, 20% is for encomendas)
+  const forecastVitrine = forecast * 0.8;
 
   if (orders > forecast) {
-    // If orders exceed forecast, produce enough for both
-    production = orders + forecast - stock;
+    // If orders exceed forecast, prioritize orders
+    production = orders + forecastVitrine - stock;
   } else {
     // Otherwise, base on forecast with order consideration
-    production = forecast - stock + orders;
+    production = forecastVitrine - stock + orders;
   }
 
   // Never suggest negative production

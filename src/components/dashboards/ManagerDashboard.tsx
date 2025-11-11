@@ -4,16 +4,8 @@ import { useState, useEffect, useMemo } from "react";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
-import {
-  Dialog,
-  DialogContent,
-  DialogHeader,
-  DialogTitle,
-  DialogFooter,
-} from "@/components/ui/dialog";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
-import { Tabs, TabsContent } from "@/components/ui/tabs";
 import {
   Table,
   TableBody,
@@ -29,13 +21,8 @@ import {
   Search,
   ShoppingCart,
   Package,
-  CalendarDays,
-  User,
-  Plus,
-  Minus,
-  Check,
   X,
-  Clock,
+  Check,
   TrendingUp,
   Table as TableIcon,
   LayoutGrid,
@@ -55,11 +42,6 @@ interface OrderItemData {
   type: "Vitrine" | "Encomenda";
   clientName?: string;
   deliveryDate?: string;
-}
-
-interface EncomendaInfo {
-  clientName: string;
-  deliveryDate: string;
 }
 
 interface ProductForecast {
@@ -83,12 +65,6 @@ export function ManagerDashboard() {
   const [orderItems, setOrderItems] = useState<Map<number, OrderItemData>>(
     new Map()
   );
-  const [showEncomendaDialog, setShowEncomendaDialog] = useState(false);
-  const [currentProductId, setCurrentProductId] = useState<number | null>(null);
-  const [encomendaInfo, setEncomendaInfo] = useState<EncomendaInfo>({
-    clientName: "",
-    deliveryDate: "",
-  });
   const [showSummary, setShowSummary] = useState(false);
   const [isSubmitting, setIsSubmitting] = useState(false);
   const [forecasts, setForecasts] = useState<Map<number, ProductForecast>>(
@@ -96,22 +72,19 @@ export function ManagerDashboard() {
   );
   const [isLoading, setIsLoading] = useState(true);
   const [searchTerm, setSearchTerm] = useState("");
-  const [activeTab, setActiveTab] = useState<"vitrine" | "encomenda">(
-    "vitrine"
-  );
   const [viewMode, setViewMode] = useState<"table" | "cards">("table");
 
   useEffect(() => {
     fetchProducts();
   }, []);
 
-  // Fetch recommendations whenever order items change
+  // Fetch recommendations only when products are loaded (initial load)
   useEffect(() => {
-    if (orderItems.size > 0) {
+    if (products.length > 0 && orderItems.size > 0) {
       const items = Array.from(orderItems.values()).map((item) => ({
         productId: item.productId,
-        stock: item.stock,
-        orders: item.quantity,
+        stock: 0, // Initial stock is always 0
+        orders: 0, // Initial orders is always 0
       }));
 
       const fetchRecommendations = async () => {
@@ -143,7 +116,8 @@ export function ManagerDashboard() {
 
       fetchRecommendations();
     }
-  }, [orderItems]);
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [products.length, orderItems.size]);
 
   const fetchProducts = async () => {
     try {
@@ -187,51 +161,41 @@ export function ManagerDashboard() {
       }
       return newItems;
     });
-  };
 
-  const incrementQuantity = (productId: number) => {
-    const item = orderItems.get(productId);
-    if (item) {
-      updateOrderItem(productId, "quantity", (item.quantity || 0) + 1);
-    }
-  };
+    // Recalculate production suggestion when stock or quantity (encomendas) changes
+    if (field === "stock" || field === "quantity") {
+      setForecasts((prev) => {
+        const newForecasts = new Map(prev);
+        const forecast = newForecasts.get(productId);
+        const item = orderItems.get(productId);
 
-  const decrementQuantity = (productId: number) => {
-    const item = orderItems.get(productId);
-    if (item && item.quantity > 0) {
-      updateOrderItem(productId, "quantity", item.quantity - 1);
-    }
-  };
+        if (forecast && item) {
+          // Get updated values
+          const stock = field === "stock" ? Number(value) || 0 : item.stock;
+          const orders =
+            field === "quantity" ? Number(value) || 0 : item.quantity;
+          const forecastValue = forecast.forecast;
 
-  const openEncomendaDialog = (productId: number) => {
-    setCurrentProductId(productId);
-    const item = orderItems.get(productId);
+          // Apply the Excel formula:
+          // If orders > forecast: production = orders + (forecast × 0.8) - stock
+          // Else: production = (forecast × 0.8) - stock + orders
+          let suggestedProduction: number;
+          const forecastVitrine = forecastValue * 0.8;
 
-    // Sempre mudar para Encomenda ao abrir o diálogo
-    updateOrderItem(productId, "type", "Encomenda");
+          if (orders > forecastValue) {
+            suggestedProduction = orders + forecastVitrine - stock;
+          } else {
+            suggestedProduction = forecastVitrine - stock + orders;
+          }
 
-    if (item?.clientName) {
-      setEncomendaInfo({
-        clientName: item.clientName || "",
-        deliveryDate: item.deliveryDate || "",
+          newForecasts.set(productId, {
+            ...forecast,
+            suggestedProduction: Math.max(0, Math.round(suggestedProduction)),
+          });
+        }
+        return newForecasts;
       });
-    } else {
-      setEncomendaInfo({ clientName: "", deliveryDate: "" });
     }
-    setShowEncomendaDialog(true);
-  };
-
-  const saveEncomendaInfo = () => {
-    if (currentProductId !== null) {
-      updateOrderItem(currentProductId, "clientName", encomendaInfo.clientName);
-      updateOrderItem(
-        currentProductId,
-        "deliveryDate",
-        encomendaInfo.deliveryDate
-      );
-      toast.success("Informações da encomenda salvas!");
-    }
-    setShowEncomendaDialog(false);
   };
 
   const handleOpenSummary = () => {
@@ -309,40 +273,28 @@ export function ManagerDashboard() {
     }
   };
 
-  // Filtrar produtos por tipo e termo de busca
+  // Filtrar produtos por termo de busca
   const filteredProducts = useMemo(() => {
     return products.filter((product) => {
-      const item = orderItems.get(product.id);
       const matchesSearch = product.name
         .toLowerCase()
         .includes(searchTerm.toLowerCase());
-      const matchesTab =
-        activeTab === "vitrine"
-          ? item?.type === "Vitrine"
-          : item?.type === "Encomenda";
-
-      return matchesSearch && (matchesTab || (item?.quantity || 0) === 0);
+      return matchesSearch;
     });
-  }, [products, orderItems, searchTerm, activeTab]);
+  }, [products, searchTerm]);
 
   // Estatísticas do pedido
   const stats = useMemo(() => {
     const allItems = Array.from(orderItems.values());
-    const itemsWithQty = allItems.filter((item) => item.quantity > 0);
-    const vitrineItems = itemsWithQty.filter((item) => item.type === "Vitrine");
-    const encomendaItems = itemsWithQty.filter(
-      (item) => item.type === "Encomenda"
-    );
-    const totalQuantity = itemsWithQty.reduce(
+    const itemsWithEncomendas = allItems.filter((item) => item.quantity > 0);
+    const totalEncomendas = itemsWithEncomendas.reduce(
       (sum, item) => sum + item.quantity,
       0
     );
 
     return {
-      totalItems: itemsWithQty.length,
-      totalQuantity,
-      vitrineCount: vitrineItems.length,
-      encomendaCount: encomendaItems.length,
+      totalItemsWithEncomendas: itemsWithEncomendas.length,
+      totalEncomendas,
     };
   }, [orderItems]);
 
@@ -368,20 +320,22 @@ export function ManagerDashboard() {
         </div>
 
         {/* Resumo Compacto no Header */}
-        {stats.totalItems > 0 && (
+        {stats.totalItemsWithEncomendas > 0 && (
           <div className="flex items-center gap-3 p-4 bg-primary/5 border border-primary/20 rounded-lg">
             <ShoppingCart className="h-5 w-5 text-primary" />
             <div className="flex items-center gap-4 text-sm">
               <div>
                 <span className="font-bold text-lg text-primary">
-                  {stats.totalItems}
+                  {stats.totalItemsWithEncomendas}
                 </span>
-                <span className="text-muted-foreground ml-1">produtos</span>
+                <span className="text-muted-foreground ml-1">
+                  produtos com encomendas
+                </span>
               </div>
               <div className="h-4 w-px bg-border" />
               <div>
-                <span className="font-semibold">{stats.totalQuantity}</span>
-                <span className="text-muted-foreground ml-1">unidades</span>
+                <span className="font-semibold">{stats.totalEncomendas}</span>
+                <span className="text-muted-foreground ml-1">encomendas</span>
               </div>
             </div>
           </div>
@@ -436,715 +390,285 @@ export function ManagerDashboard() {
               </div>
             </div>
           </div>
-
-          {/* Quick Stats */}
-          <div className="flex gap-2 mt-4">
-            <Badge
-              variant={activeTab === "vitrine" ? "default" : "outline"}
-              className="px-3 py-2 gap-1.5 cursor-pointer transition-all"
-              onClick={() => setActiveTab("vitrine")}
-            >
-              <Package className="h-3.5 w-3.5" />
-              Vitrine {stats.vitrineCount > 0 && `(${stats.vitrineCount})`}
-            </Badge>
-            <Badge
-              variant={activeTab === "encomenda" ? "default" : "outline"}
-              className={`px-3 py-2 gap-1.5 cursor-pointer transition-all ${
-                activeTab === "encomenda"
-                  ? "bg-primary hover:bg-primary/90 text-primary-foreground"
-                  : ""
-              }`}
-              onClick={() => setActiveTab("encomenda")}
-            >
-              <CalendarDays className="h-3.5 w-3.5" />
-              Encomenda{" "}
-              {stats.encomendaCount > 0 && `(${stats.encomendaCount})`}
-            </Badge>
-          </div>
         </CardContent>
       </Card>
 
-      {/* Tabs: Vitrine e Encomenda */}
-      <Tabs
-        value={activeTab}
-        onValueChange={(v) => setActiveTab(v as "vitrine" | "encomenda")}
-        className="space-y-6"
-      >
-        <TabsContent value="vitrine" className="space-y-4 mt-0">
-          {viewMode === "table" ? (
-            /* TABELA VIEW - Otimizado para entrada rápida */
-            <Card>
-              <CardContent className="p-0">
-                <Table>
-                  <TableHeader>
-                    <TableRow className="border-b-2">
-                      <TableHead className="w-[30%] font-semibold">
-                        Produto
-                      </TableHead>
-                      <TableHead className="w-[15%] text-center font-semibold">
-                        Estoque
-                      </TableHead>
-                      <TableHead className="w-[15%] text-center font-semibold bg-muted/30">
-                        Previsão
-                      </TableHead>
-                      <TableHead className="w-[15%] text-center font-semibold">
-                        Pedidos
-                      </TableHead>
-                      <TableHead className="w-[20%] text-center font-semibold bg-primary/5">
-                        Produzir
-                      </TableHead>
-                      <TableHead className="w-[5%]"></TableHead>
-                    </TableRow>
-                  </TableHeader>
-                  <TableBody>
-                    {filteredProducts
-                      .filter((p) => {
-                        const item = orderItems.get(p.id);
-                        return (
-                          !item ||
-                          item.type === "Vitrine" ||
-                          item.quantity === 0
-                        );
-                      })
-                      .map((product) => {
-                        const item = orderItems.get(product.id);
-                        const forecast = forecasts.get(product.id);
-                        const hasQuantity = (item?.quantity || 0) > 0;
-
-                        return (
-                          <TableRow
-                            key={product.id}
-                            className={hasQuantity ? "bg-primary/5" : ""}
-                          >
-                            <TableCell>
-                              <div className="flex items-center gap-2">
-                                <div className="flex flex-col">
-                                  <span className="font-medium">
-                                    {product.name}
-                                  </span>
-                                  {product.isClassA && (
-                                    <Badge
-                                      variant="secondary"
-                                      className="w-fit mt-1 text-xs gap-1"
-                                    >
-                                      <TrendingUp className="h-2.5 w-2.5" />
-                                      Classe A
-                                    </Badge>
-                                  )}
-                                </div>
-                              </div>
-                            </TableCell>
-
-                            {/* Estoque Atual - Editable */}
-                            <TableCell>
-                              <Input
-                                type="number"
-                                min="0"
-                                placeholder="0"
-                                value={item?.stock || ""}
-                                onChange={(e) => {
-                                  updateOrderItem(
-                                    product.id,
-                                    "type",
-                                    "Vitrine"
-                                  );
-                                  updateOrderItem(
-                                    product.id,
-                                    "stock",
-                                    parseInt(e.target.value) || 0
-                                  );
-                                }}
-                                className="h-9 text-center font-medium"
-                                autoComplete="off"
-                                onFocus={(e) => e.target.select()}
-                              />
-                            </TableCell>
-
-                            {/* Previsão - Non-editable */}
-                            <TableCell className="bg-muted/30 text-center">
-                              <div className="inline-flex items-center gap-1.5 px-3 py-1 rounded-md bg-muted/50">
-                                <span className="text-xs text-muted-foreground">
-                                  ~
-                                </span>
-                                <span className="font-semibold text-base">
-                                  {forecast?.forecast || 0}
-                                </span>
-                              </div>
-                            </TableCell>
-
-                            {/* Encomendas - Editable */}
-                            <TableCell>
-                              <Input
-                                type="number"
-                                min="0"
-                                placeholder="0"
-                                value={item?.quantity || ""}
-                                onChange={(e) => {
-                                  updateOrderItem(
-                                    product.id,
-                                    "type",
-                                    "Vitrine"
-                                  );
-                                  updateOrderItem(
-                                    product.id,
-                                    "quantity",
-                                    parseInt(e.target.value) || 0
-                                  );
-                                }}
-                                className="h-9 text-center font-medium"
-                                autoComplete="off"
-                                onFocus={(e) => e.target.select()}
-                              />
-                            </TableCell>
-
-                            {/* Sugestão de Produção - Calculated */}
-                            <TableCell className="bg-primary/5 text-center">
-                              <div className="inline-flex items-center gap-2 px-4 py-1.5 rounded-md bg-primary/10 border border-primary/20">
-                                <Package className="h-4 w-4 text-primary" />
-                                <span className="font-bold text-lg text-primary">
-                                  {forecast?.suggestedProduction || 0}
-                                </span>
-                              </div>
-                            </TableCell>
-
-                            <TableCell>
-                              {hasQuantity && item && (
-                                <Badge className="gap-1 bg-primary text-primary-foreground">
-                                  <Check className="h-3 w-3" />
-                                  OK
-                                </Badge>
-                              )}
-                            </TableCell>
-                          </TableRow>
-                        );
-                      })}
-                  </TableBody>
-                </Table>
-              </CardContent>
-            </Card>
-          ) : filteredProducts.filter((p) => {
-              const item = orderItems.get(p.id);
-              return !item || item.type === "Vitrine" || item.quantity === 0;
-            }).length === 0 ? (
-            <Card className="p-12">
-              <div className="text-center">
-                <Package className="h-12 w-12 text-muted-foreground mx-auto mb-4" />
-                <h3 className="text-lg font-semibold mb-2">
-                  Nenhum produto encontrado
-                </h3>
-                <p className="text-muted-foreground">
-                  {searchTerm
-                    ? "Tente buscar com outros termos"
-                    : "Adicione produtos à vitrine"}
-                </p>
-              </div>
-            </Card>
-          ) : (
-            /* CARDS VIEW - Mantido para visualização detalhada */
-            <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
-              {filteredProducts
-                .filter((p) => {
-                  const item = orderItems.get(p.id);
-                  return (
-                    !item || item.type === "Vitrine" || item.quantity === 0
-                  );
-                })
-                .map((product) => {
+      {/* Tabela/Cards de Produtos */}
+      {viewMode === "table" ? (
+        /* TABELA VIEW - Otimizado para entrada rápida */
+        <Card>
+          <CardContent className="p-0">
+            <Table>
+              <TableHeader>
+                <TableRow className="border-b-2">
+                  <TableHead className="w-[25%] font-semibold">
+                    Produto
+                  </TableHead>
+                  <TableHead className="w-[12%] text-center font-semibold">
+                    Estoque Atual
+                  </TableHead>
+                  <TableHead className="w-[13%] text-center font-semibold bg-muted/30">
+                    Previsão
+                  </TableHead>
+                  <TableHead className="w-[13%] text-center font-semibold">
+                    Encomendas
+                  </TableHead>
+                  <TableHead className="w-[17%] text-center font-semibold bg-primary/5">
+                    Sugestão de Produção
+                  </TableHead>
+                  <TableHead className="w-[20%] text-center font-semibold bg-green-50 dark:bg-green-950/20">
+                    Pedidos para Produção
+                  </TableHead>
+                </TableRow>
+              </TableHeader>
+              <TableBody>
+                {filteredProducts.map((product) => {
                   const item = orderItems.get(product.id);
                   const forecast = forecasts.get(product.id);
                   const hasQuantity = (item?.quantity || 0) > 0;
 
                   return (
-                    <Card
+                    <TableRow
                       key={product.id}
-                      className={`transition-all hover:shadow-lg ${
-                        hasQuantity
-                          ? "border-primary/50 shadow-md ring-2 ring-primary/10"
-                          : "hover:border-primary/30"
-                      }`}
+                      className={hasQuantity ? "bg-primary/5" : ""}
                     >
-                      <CardHeader className="pb-3">
-                        <div className="flex items-start justify-between gap-2">
-                          <div className="flex-1">
-                            <CardTitle className="text-base leading-tight">
-                              {product.name}
-                            </CardTitle>
+                      <TableCell>
+                        <div className="flex items-center gap-2">
+                          <div className="flex flex-col">
+                            <span className="font-medium">{product.name}</span>
                             {product.isClassA && (
                               <Badge
                                 variant="secondary"
-                                className="mt-1.5 gap-1"
+                                className="w-fit mt-1 text-xs gap-1"
                               >
-                                <TrendingUp className="h-3 w-3" />
+                                <TrendingUp className="h-2.5 w-2.5" />
                                 Classe A
                               </Badge>
                             )}
                           </div>
-                          {hasQuantity && item && (
-                            <Badge className="gap-1 bg-primary text-primary-foreground shrink-0">
-                              <Check className="h-3 w-3" />
-                              {item.quantity}
-                            </Badge>
-                          )}
                         </div>
-                      </CardHeader>
-                      <CardContent className="space-y-3 pt-0">
-                        {/* Suggestion Badge */}
-                        {forecast && forecast.suggestedProduction > 0 && (
-                          <div className="flex items-center justify-center gap-2 p-3 rounded-lg bg-primary/5 border border-primary/20">
-                            <Package className="h-5 w-5 text-primary" />
-                            <div className="text-center">
-                              <div className="text-xs text-muted-foreground font-medium">
-                                Sugestão de Produção
-                              </div>
-                              <div className="text-2xl font-bold text-primary">
-                                {forecast.suggestedProduction}
-                              </div>
-                            </div>
-                          </div>
-                        )}
+                      </TableCell>
 
-                        <div className="grid grid-cols-2 gap-3">
-                          <div className="space-y-1.5">
-                            <Label className="text-xs text-muted-foreground font-medium">
-                              Estoque
-                            </Label>
-                            <Input
-                              type="number"
-                              min="0"
-                              placeholder="0"
-                              value={item?.stock || ""}
-                              onChange={(e) => {
-                                updateOrderItem(product.id, "type", "Vitrine");
-                                updateOrderItem(
-                                  product.id,
-                                  "stock",
-                                  parseInt(e.target.value) || 0
-                                );
-                              }}
-                              className="h-10 text-center font-medium"
-                            />
-                          </div>
+                      {/* Estoque Atual - Editável (Azul) */}
+                      <TableCell className="bg-blue-50 dark:bg-blue-950/20">
+                        <Input
+                          type="number"
+                          min="0"
+                          placeholder="0"
+                          value={item?.stock || ""}
+                          onChange={(e) => {
+                            updateOrderItem(
+                              product.id,
+                              "stock",
+                              parseInt(e.target.value) || 0
+                            );
+                          }}
+                          className="h-9 text-center font-medium bg-white dark:bg-gray-900"
+                          autoComplete="off"
+                          onFocus={(e) => e.target.select()}
+                        />
+                      </TableCell>
 
-                          <div className="space-y-1.5">
-                            <Label className="text-xs text-muted-foreground font-medium">
-                              Previsão
-                            </Label>
-                            <div className="h-10 flex items-center justify-center rounded-md bg-muted/30 border">
-                              <span className="text-xs text-muted-foreground mr-1">
-                                ~
-                              </span>
-                              <span className="font-semibold">
-                                {forecast?.forecast || 0}
-                              </span>
-                            </div>
-                          </div>
-
-                          <div className="col-span-2 space-y-1.5">
-                            <Label className="text-xs text-muted-foreground font-medium">
-                              Pedidos
-                            </Label>
-                            <div className="flex items-center gap-1">
-                              <Button
-                                type="button"
-                                variant="outline"
-                                size="icon"
-                                className="h-10 w-10 shrink-0"
-                                onClick={() => {
-                                  updateOrderItem(
-                                    product.id,
-                                    "type",
-                                    "Vitrine"
-                                  );
-                                  decrementQuantity(product.id);
-                                }}
-                                disabled={(item?.quantity || 0) === 0}
-                              >
-                                <Minus className="h-4 w-4" />
-                              </Button>
-                              <Input
-                                type="number"
-                                min="0"
-                                placeholder="0"
-                                value={item?.quantity || ""}
-                                onChange={(e) => {
-                                  updateOrderItem(
-                                    product.id,
-                                    "type",
-                                    "Vitrine"
-                                  );
-                                  updateOrderItem(
-                                    product.id,
-                                    "quantity",
-                                    parseInt(e.target.value) || 0
-                                  );
-                                }}
-                                className="h-10 text-center font-bold text-base"
-                              />
-                              <Button
-                                type="button"
-                                variant="outline"
-                                size="icon"
-                                className="h-10 w-10 shrink-0"
-                                onClick={() => {
-                                  updateOrderItem(
-                                    product.id,
-                                    "type",
-                                    "Vitrine"
-                                  );
-                                  incrementQuantity(product.id);
-                                }}
-                              >
-                                <Plus className="h-4 w-4" />
-                              </Button>
-                            </div>
-                          </div>
+                      {/* Previsão - Não editável (Laranja) */}
+                      <TableCell className="bg-orange-50 dark:bg-orange-950/20 text-center">
+                        <div className="inline-flex items-center gap-1.5 px-3 py-1 rounded-md bg-orange-100 dark:bg-orange-900/30">
+                          <span className="font-semibold text-base">
+                            {forecast?.forecast || 0}
+                          </span>
                         </div>
-                      </CardContent>
-                    </Card>
+                      </TableCell>
+
+                      {/* Encomendas - Editável (Azul) */}
+                      <TableCell className="bg-blue-50 dark:bg-blue-950/20">
+                        <Input
+                          type="number"
+                          min="0"
+                          placeholder="0"
+                          value={item?.quantity || ""}
+                          onChange={(e) => {
+                            updateOrderItem(
+                              product.id,
+                              "quantity",
+                              parseInt(e.target.value) || 0
+                            );
+                          }}
+                          className="h-9 text-center font-medium bg-white dark:bg-gray-900"
+                          autoComplete="off"
+                          onFocus={(e) => e.target.select()}
+                        />
+                      </TableCell>
+
+                      {/* Sugestão de Produção - Calculada (Amarelo) */}
+                      <TableCell className="bg-yellow-50 dark:bg-yellow-950/20 text-center">
+                        <div className="inline-flex items-center gap-2 px-4 py-1.5 rounded-md bg-yellow-100 dark:bg-yellow-900/30 border border-yellow-200 dark:border-yellow-800">
+                          <Package className="h-4 w-4 text-yellow-700 dark:text-yellow-300" />
+                          <span className="font-bold text-lg text-yellow-700 dark:text-yellow-300">
+                            {forecast?.suggestedProduction || 0}
+                          </span>
+                        </div>
+                      </TableCell>
+
+                      {/* Pedidos para Produção - Editável (Verde) */}
+                      <TableCell className="bg-green-50 dark:bg-green-950/20">
+                        <Input
+                          type="number"
+                          min="0"
+                          placeholder="0"
+                          className="h-9 text-center font-medium bg-white dark:bg-gray-900"
+                          autoComplete="off"
+                          onFocus={(e) => e.target.select()}
+                        />
+                      </TableCell>
+                    </TableRow>
                   );
                 })}
-            </div>
-          )}
-        </TabsContent>
+              </TableBody>
+            </Table>
+          </CardContent>
+        </Card>
+      ) : filteredProducts.length === 0 ? (
+        <Card className="p-12">
+          <div className="text-center">
+            <Package className="h-12 w-12 text-muted-foreground mx-auto mb-4" />
+            <h3 className="text-lg font-semibold mb-2">
+              Nenhum produto encontrado
+            </h3>
+            <p className="text-muted-foreground">
+              {searchTerm
+                ? "Tente buscar com outros termos"
+                : "Nenhum produto disponível"}
+            </p>
+          </div>
+        </Card>
+      ) : (
+        /* CARDS VIEW - Mantido para visualização detalhada */
+        <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
+          {filteredProducts.map((product) => {
+            const item = orderItems.get(product.id);
+            const forecast = forecasts.get(product.id);
+            const hasQuantity = (item?.quantity || 0) > 0;
 
-        <TabsContent value="encomenda" className="space-y-4 mt-0">
-          {viewMode === "table" ? (
-            /* TABELA VIEW - Encomendas */
-            <Card>
-              <CardContent className="p-0">
-                <Table>
-                  <TableHeader>
-                    <TableRow>
-                      <TableHead className="w-[30%]">Produto</TableHead>
-                      <TableHead className="w-[15%] text-center">
-                        Quantidade
-                      </TableHead>
-                      <TableHead className="w-[25%]">Cliente</TableHead>
-                      <TableHead className="w-[20%]">Data Entrega</TableHead>
-                      <TableHead className="w-[10%]"></TableHead>
-                    </TableRow>
-                  </TableHeader>
-                  <TableBody>
-                    {products.map((product) => {
-                      const item = orderItems.get(product.id);
-                      const hasQuantity = (item?.quantity || 0) > 0;
-                      const isEncomenda = item?.type === "Encomenda";
-                      const hasEncomendaInfo = !!(
-                        item?.clientName && item?.deliveryDate
-                      );
-
-                      if (!isEncomenda && hasQuantity) return null;
-
-                      return (
-                        <TableRow
-                          key={product.id}
-                          className={hasQuantity ? "bg-secondary/20" : ""}
-                        >
-                          <TableCell>
-                            <div className="flex flex-col">
-                              <span className="font-medium">
-                                {product.name}
-                              </span>
-                              {product.isClassA && (
-                                <Badge
-                                  variant="secondary"
-                                  className="w-fit mt-1 text-xs gap-1"
-                                >
-                                  <TrendingUp className="h-2.5 w-2.5" />
-                                  Classe A
-                                </Badge>
-                              )}
-                            </div>
-                          </TableCell>
-
-                          <TableCell>
-                            <div className="flex items-center gap-1 justify-center">
-                              <Button
-                                type="button"
-                                variant="outline"
-                                size="icon"
-                                className="h-9 w-9 shrink-0"
-                                onClick={() => {
-                                  updateOrderItem(
-                                    product.id,
-                                    "type",
-                                    "Encomenda"
-                                  );
-                                  decrementQuantity(product.id);
-                                }}
-                                disabled={(item?.quantity || 0) === 0}
-                                tabIndex={-1}
-                              >
-                                <Minus className="h-3.5 w-3.5" />
-                              </Button>
-                              <Input
-                                type="number"
-                                min="0"
-                                placeholder="0"
-                                value={item?.quantity || ""}
-                                onChange={(e) => {
-                                  updateOrderItem(
-                                    product.id,
-                                    "type",
-                                    "Encomenda"
-                                  );
-                                  updateOrderItem(
-                                    product.id,
-                                    "quantity",
-                                    parseInt(e.target.value) || 0
-                                  );
-                                }}
-                                className="h-9 text-center font-bold max-w-[80px]"
-                                autoComplete="off"
-                                onFocus={(e) => e.target.select()}
-                              />
-                              <Button
-                                type="button"
-                                variant="outline"
-                                size="icon"
-                                className="h-9 w-9 shrink-0"
-                                onClick={() => {
-                                  updateOrderItem(
-                                    product.id,
-                                    "type",
-                                    "Encomenda"
-                                  );
-                                  incrementQuantity(product.id);
-                                }}
-                                tabIndex={-1}
-                              >
-                                <Plus className="h-3.5 w-3.5" />
-                              </Button>
-                            </div>
-                          </TableCell>
-
-                          <TableCell>
-                            {hasQuantity ? (
-                              <Input
-                                placeholder="Nome do cliente"
-                                value={item?.clientName || ""}
-                                onChange={(e) => {
-                                  updateOrderItem(
-                                    product.id,
-                                    "clientName",
-                                    e.target.value
-                                  );
-                                }}
-                                className="h-9"
-                                autoComplete="off"
-                              />
-                            ) : (
-                              <span className="text-muted-foreground text-sm">
-                                —
-                              </span>
-                            )}
-                          </TableCell>
-
-                          <TableCell>
-                            {hasQuantity ? (
-                              <Input
-                                type="date"
-                                value={item?.deliveryDate || ""}
-                                onChange={(e) => {
-                                  updateOrderItem(
-                                    product.id,
-                                    "deliveryDate",
-                                    e.target.value
-                                  );
-                                }}
-                                className="h-9"
-                                min={new Date().toISOString().split("T")[0]}
-                              />
-                            ) : (
-                              <span className="text-muted-foreground text-sm">
-                                —
-                              </span>
-                            )}
-                          </TableCell>
-
-                          <TableCell>
-                            {hasQuantity && item && hasEncomendaInfo && (
-                              <Badge className="gap-1 bg-primary text-primary-foreground">
-                                <Check className="h-3 w-3" />
-                                OK
-                              </Badge>
-                            )}
-                            {hasQuantity && !hasEncomendaInfo && (
-                              <Badge variant="destructive" className="gap-1">
-                                <X className="h-3 w-3" />
-                                Falta
-                              </Badge>
-                            )}
-                          </TableCell>
-                        </TableRow>
-                      );
-                    })}
-                  </TableBody>
-                </Table>
-              </CardContent>
-            </Card>
-          ) : products.filter((p) => {
-              const item = orderItems.get(p.id);
-              const isEncomenda = item?.type === "Encomenda";
-              const hasQuantity = (item?.quantity || 0) > 0;
-              return !isEncomenda && hasQuantity ? false : true;
-            }).length === 0 ? (
-            <Card className="p-12">
-              <div className="text-center">
-                <CalendarDays className="h-12 w-12 text-muted-foreground mx-auto mb-4" />
-                <h3 className="text-lg font-semibold mb-2">
-                  Nenhuma encomenda
-                </h3>
-                <p className="text-muted-foreground">
-                  Adicione produtos e preencha os dados do cliente
-                </p>
-              </div>
-            </Card>
-          ) : (
-            <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
-              {products.map((product) => {
-                const item = orderItems.get(product.id);
-                const hasQuantity = (item?.quantity || 0) > 0;
-                const isEncomenda = item?.type === "Encomenda";
-                const hasEncomendaInfo = !!(
-                  item?.clientName && item?.deliveryDate
-                );
-
-                // Só mostrar se for encomenda OU se tiver sido adicionado como encomenda
-                if (!isEncomenda && hasQuantity) return null;
-
-                return (
-                  <Card
-                    key={product.id}
-                    className={`transition-all hover:shadow-lg ${
-                      hasQuantity
-                        ? "border-secondary/50 shadow-md ring-2 ring-secondary/10"
-                        : "hover:border-secondary/30"
-                    }`}
-                  >
-                    <CardHeader className="pb-3">
-                      <div className="flex items-start justify-between gap-2">
-                        <div className="flex-1">
-                          <CardTitle className="text-base leading-tight">
-                            {product.name}
-                          </CardTitle>
-                          {product.isClassA && (
-                            <Badge variant="secondary" className="mt-1.5 gap-1">
-                              <TrendingUp className="h-3 w-3" />
-                              Classe A
-                            </Badge>
-                          )}
-                        </div>
-                        {hasQuantity && item && (
-                          <Badge className="gap-1 bg-primary text-primary-foreground shrink-0">
-                            <Check className="h-3 w-3" />
-                            {item.quantity}
-                          </Badge>
-                        )}
-                      </div>
-                    </CardHeader>
-                    <CardContent className="space-y-3 pt-0">
-                      <div className="space-y-1.5">
-                        <Label className="text-xs text-muted-foreground">
-                          Quantidade
-                        </Label>
-                        <div className="flex items-center gap-1">
-                          <Button
-                            type="button"
-                            variant="outline"
-                            size="icon"
-                            className="h-9 w-9 shrink-0"
-                            onClick={() => {
-                              updateOrderItem(product.id, "type", "Encomenda");
-                              decrementQuantity(product.id);
-                            }}
-                            disabled={(item?.quantity || 0) === 0}
-                          >
-                            <Minus className="h-3.5 w-3.5" />
-                          </Button>
-                          <Input
-                            type="number"
-                            min="0"
-                            placeholder="0"
-                            value={item?.quantity || ""}
-                            onChange={(e) => {
-                              updateOrderItem(product.id, "type", "Encomenda");
-                              updateOrderItem(
-                                product.id,
-                                "quantity",
-                                parseInt(e.target.value) || 0
-                              );
-                            }}
-                            className="h-9 text-center font-bold"
-                          />
-                          <Button
-                            type="button"
-                            variant="outline"
-                            size="icon"
-                            className="h-9 w-9 shrink-0"
-                            onClick={() => {
-                              updateOrderItem(product.id, "type", "Encomenda");
-                              incrementQuantity(product.id);
-                            }}
-                          >
-                            <Plus className="h-3.5 w-3.5" />
-                          </Button>
-                        </div>
-                      </div>
-
-                      {hasQuantity && (
-                        <div className="space-y-2 pt-2 border-t">
-                          {hasEncomendaInfo ? (
-                            <div className="space-y-2 p-3 bg-secondary/20 dark:bg-secondary/10 rounded-md">
-                              <div className="flex items-center gap-2 text-sm">
-                                <User className="h-3.5 w-3.5 text-secondary-foreground" />
-                                <span className="font-medium">
-                                  {item.clientName}
-                                </span>
-                              </div>
-                              <div className="flex items-center gap-2 text-sm">
-                                <Clock className="h-3.5 w-3.5 text-secondary-foreground" />
-                                <span>
-                                  {new Date(
-                                    item.deliveryDate + "T00:00:00"
-                                  ).toLocaleDateString("pt-BR")}
-                                </span>
-                              </div>
-                              <Button
-                                type="button"
-                                variant="outline"
-                                size="sm"
-                                onClick={() => openEncomendaDialog(product.id)}
-                                className="w-full mt-1 h-8 text-xs"
-                              >
-                                Editar
-                              </Button>
-                            </div>
-                          ) : (
-                            <Button
-                              type="button"
-                              variant="default"
-                              size="sm"
-                              onClick={() => openEncomendaDialog(product.id)}
-                              className="w-full gap-2 bg-secondary hover:bg-secondary/90 text-secondary-foreground"
-                            >
-                              <User className="h-3.5 w-3.5" />
-                              Adicionar Cliente
-                            </Button>
-                          )}
-                        </div>
+            return (
+              <Card
+                key={product.id}
+                className={`transition-all hover:shadow-lg ${
+                  hasQuantity
+                    ? "border-primary/50 shadow-md ring-2 ring-primary/10"
+                    : "hover:border-primary/30"
+                }`}
+              >
+                <CardHeader className="pb-3">
+                  <div className="flex items-start justify-between gap-2">
+                    <div className="flex-1">
+                      <CardTitle className="text-base leading-tight">
+                        {product.name}
+                      </CardTitle>
+                      {product.isClassA && (
+                        <Badge variant="secondary" className="mt-1.5 gap-1">
+                          <TrendingUp className="h-3 w-3" />
+                          Classe A
+                        </Badge>
                       )}
-                    </CardContent>
-                  </Card>
-                );
-              })}
-            </div>
-          )}
-        </TabsContent>
-      </Tabs>
+                    </div>
+                    {hasQuantity && item && (
+                      <Badge className="gap-1 bg-primary text-primary-foreground shrink-0">
+                        <Check className="h-3 w-3" />
+                        {item.quantity}
+                      </Badge>
+                    )}
+                  </div>
+                </CardHeader>
+                <CardContent className="space-y-3 pt-0">
+                  {/* Suggestion Badge */}
+                  {forecast && forecast.suggestedProduction > 0 && (
+                    <div className="flex items-center justify-center gap-2 p-3 rounded-lg bg-primary/5 border border-primary/20">
+                      <Package className="h-5 w-5 text-primary" />
+                      <div className="text-center">
+                        <div className="text-xs text-muted-foreground font-medium">
+                          Sugestão de Produção
+                        </div>
+                        <div className="text-2xl font-bold text-primary">
+                          {forecast.suggestedProduction}
+                        </div>
+                      </div>
+                    </div>
+                  )}
+
+                  <div className="grid grid-cols-2 gap-3">
+                    <div className="space-y-1.5">
+                      <Label className="text-xs text-muted-foreground font-medium">
+                        Estoque Atual
+                      </Label>
+                      <Input
+                        type="number"
+                        min="0"
+                        placeholder="0"
+                        value={item?.stock || ""}
+                        onChange={(e) => {
+                          updateOrderItem(
+                            product.id,
+                            "stock",
+                            parseInt(e.target.value) || 0
+                          );
+                        }}
+                        className="h-10 text-center font-medium bg-blue-50 dark:bg-blue-950/20"
+                      />
+                    </div>
+
+                    <div className="space-y-1.5">
+                      <Label className="text-xs text-muted-foreground font-medium">
+                        Previsão
+                      </Label>
+                      <div className="h-10 flex items-center justify-center rounded-md bg-orange-100 dark:bg-orange-900/30 border border-orange-200 dark:border-orange-800">
+                        <span className="font-semibold">
+                          {forecast?.forecast || 0}
+                        </span>
+                      </div>
+                    </div>
+
+                    <div className="col-span-2 space-y-1.5">
+                      <Label className="text-xs text-muted-foreground font-medium">
+                        Encomendas
+                      </Label>
+                      <Input
+                        type="number"
+                        min="0"
+                        placeholder="0"
+                        value={item?.quantity || ""}
+                        onChange={(e) => {
+                          updateOrderItem(
+                            product.id,
+                            "quantity",
+                            parseInt(e.target.value) || 0
+                          );
+                        }}
+                        className="h-10 text-center font-medium bg-blue-50 dark:bg-blue-950/20"
+                      />
+                    </div>
+
+                    <div className="col-span-2 space-y-1.5">
+                      <Label className="text-xs text-muted-foreground font-medium">
+                        Pedidos para Produção
+                      </Label>
+                      <Input
+                        type="number"
+                        min="0"
+                        placeholder="0"
+                        className="h-10 text-center font-medium bg-green-50 dark:bg-green-950/20"
+                        autoComplete="off"
+                        onFocus={(e) => e.target.select()}
+                      />
+                    </div>
+                  </div>
+                </CardContent>
+              </Card>
+            );
+          })}
+        </div>
+      )}
 
       {/* Botão Fixo de Revisar - Melhorado */}
-      {stats.totalItems > 0 && (
+      {stats.totalItemsWithEncomendas > 0 && (
         <div className="fixed bottom-6 right-6 z-50 animate-in slide-in-from-bottom-4">
           <Button
             onClick={handleOpenSummary}
@@ -1154,99 +678,18 @@ export function ManagerDashboard() {
             <div className="relative">
               <ShoppingCart className="h-6 w-6" />
               <Badge className="absolute -top-2 -right-2 h-5 w-5 flex items-center justify-center p-0 bg-red-500 text-[10px] border-2 border-white">
-                {stats.totalItems}
+                {stats.totalItemsWithEncomendas}
               </Badge>
             </div>
             <div className="flex flex-col items-start">
               <span>Revisar Pedido</span>
               <span className="text-xs font-normal opacity-90">
-                {stats.totalQuantity} unidades
+                {stats.totalEncomendas} encomendas
               </span>
             </div>
           </Button>
         </div>
       )}
-
-      {/* Dialog de Encomenda - Melhorado */}
-      <Dialog open={showEncomendaDialog} onOpenChange={setShowEncomendaDialog}>
-        <DialogContent className="sm:max-w-md">
-          <DialogHeader>
-            <DialogTitle className="flex items-center gap-2 text-xl">
-              <div className="p-2 bg-secondary/30 dark:bg-secondary/20 rounded-lg">
-                <User className="h-5 w-5 text-secondary-foreground" />
-              </div>
-              Informações da Encomenda
-            </DialogTitle>
-            <p className="text-sm text-muted-foreground mt-1">
-              Preencha os dados do cliente e a data de entrega
-            </p>
-          </DialogHeader>
-          <div className="space-y-5 py-4">
-            <div className="space-y-2">
-              <Label htmlFor="client-name" className="text-sm font-medium">
-                Nome do Cliente *
-              </Label>
-              <div className="relative">
-                <User className="absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 text-muted-foreground" />
-                <Input
-                  id="client-name"
-                  value={encomendaInfo.clientName}
-                  onChange={(e) =>
-                    setEncomendaInfo({
-                      ...encomendaInfo,
-                      clientName: e.target.value,
-                    })
-                  }
-                  placeholder="Ex: Maria Silva"
-                  className="h-11 pl-10"
-                  autoFocus
-                />
-              </div>
-            </div>
-            <div className="space-y-2">
-              <Label htmlFor="delivery-date" className="text-sm font-medium">
-                Data de Entrega *
-              </Label>
-              <div className="relative">
-                <CalendarDays className="absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 text-muted-foreground pointer-events-none z-10" />
-                <Input
-                  id="delivery-date"
-                  type="date"
-                  value={encomendaInfo.deliveryDate}
-                  onChange={(e) =>
-                    setEncomendaInfo({
-                      ...encomendaInfo,
-                      deliveryDate: e.target.value,
-                    })
-                  }
-                  className="h-11 pl-10"
-                  min={new Date().toISOString().split("T")[0]}
-                />
-              </div>
-              <p className="text-xs text-muted-foreground">Data mínima: hoje</p>
-            </div>
-          </div>
-          <DialogFooter className="gap-2 sm:gap-0">
-            <Button
-              variant="outline"
-              onClick={() => setShowEncomendaDialog(false)}
-              className="flex-1 sm:flex-none"
-            >
-              Cancelar
-            </Button>
-            <Button
-              onClick={saveEncomendaInfo}
-              disabled={
-                !encomendaInfo.clientName || !encomendaInfo.deliveryDate
-              }
-              className="flex-1 sm:flex-none"
-            >
-              <Check className="h-4 w-4 mr-2" />
-              Salvar
-            </Button>
-          </DialogFooter>
-        </DialogContent>
-      </Dialog>
 
       {/* Dialog de Resumo */}
       <OrderSummaryDialog
