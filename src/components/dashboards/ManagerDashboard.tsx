@@ -269,7 +269,9 @@ export function ManagerDashboard() {
       }
     } catch (error) {
       console.error("Erro ao enviar pedido:", error);
-      toast.error("Erro ao enviar pedido. Verifique os dados e tente novamente.");
+      toast.error(
+        "Erro ao enviar pedido. Verifique os dados e tente novamente."
+      );
     } finally {
       setIsSubmitting(false);
     }

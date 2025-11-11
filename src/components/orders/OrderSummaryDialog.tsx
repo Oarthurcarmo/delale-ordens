@@ -77,9 +77,15 @@ export function OrderSummaryDialog({
             <TableHeader>
               <TableRow className="border-b-2">
                 <TableHead className="font-semibold">Produto</TableHead>
-                <TableHead className="text-center font-semibold">Estoque</TableHead>
-                <TableHead className="text-center font-semibold">Quantidade</TableHead>
-                <TableHead className="font-semibold">Detalhes da Encomenda</TableHead>
+                <TableHead className="text-center font-semibold">
+                  Estoque
+                </TableHead>
+                <TableHead className="text-center font-semibold">
+                  Quantidade
+                </TableHead>
+                <TableHead className="font-semibold">
+                  Detalhes da Encomenda
+                </TableHead>
               </TableRow>
             </TableHeader>
             <TableBody>
@@ -95,7 +101,9 @@ export function OrderSummaryDialog({
                   </TableCell>
                   <TableCell className="text-center">
                     <div className="inline-flex items-center gap-1 px-3 py-1 rounded bg-primary/10 border border-primary/20">
-                      <span className="text-lg font-bold text-primary">{item.quantity}</span>
+                      <span className="text-lg font-bold text-primary">
+                        {item.quantity}
+                      </span>
                     </div>
                   </TableCell>
                   <TableCell className="min-w-[300px]">
@@ -112,18 +120,22 @@ export function OrderSummaryDialog({
                             <span className="text-muted-foreground">📅</span>
                             <div>
                               <strong>Entrega:</strong>{" "}
-                              {new Date(item.deliveryDate + "T00:00:00").toLocaleDateString(
-                                "pt-BR"
-                              )}
+                              {new Date(
+                                item.deliveryDate + "T00:00:00"
+                              ).toLocaleDateString("pt-BR")}
                             </div>
                           </div>
                         )}
                         {item.observation && (
                           <div className="mt-2 p-2.5 bg-amber-50 dark:bg-amber-950/20 border border-amber-200 dark:border-amber-800 rounded-md">
                             <div className="flex items-start gap-2">
-                              <span className="text-amber-600 dark:text-amber-400 mt-0.5">💬</span>
+                              <span className="text-amber-600 dark:text-amber-400 mt-0.5">
+                                💬
+                              </span>
                               <div className="flex-1">
-                                <strong className="text-amber-900 dark:text-amber-100">Observação:</strong>
+                                <strong className="text-amber-900 dark:text-amber-100">
+                                  Observação:
+                                </strong>
                                 <p className="text-amber-800 dark:text-amber-200 mt-0.5">
                                   {item.observation}
                                 </p>
