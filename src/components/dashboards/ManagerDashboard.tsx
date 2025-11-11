@@ -79,6 +79,7 @@ export function ManagerDashboard() {
   const [orderItems, setOrderItems] = useState<Map<number, OrderItemData>>(
     new Map()
   );
+  const [stocks, setStocks] = useState<Map<number, number>>(new Map());
   const [showEncomendaDialog, setShowEncomendaDialog] = useState(false);
   const [currentProductId, setCurrentProductId] = useState<number | null>(null);
   const [encomendaInfo, setEncomendaInfo] = useState<EncomendaInfo>({
@@ -111,6 +112,7 @@ export function ManagerDashboard() {
 
         // Inicializar orderItems com valores padrão
         const initialItems = new Map<number, OrderItemData>();
+        const initialStocks = new Map<number, number>();
         data.forEach((product: Product) => {
           initialItems.set(product.id, {
             productId: product.id,
@@ -119,8 +121,10 @@ export function ManagerDashboard() {
             quantity: 0,
             type: "Vitrine",
           });
+          initialStocks.set(product.id, 0);
         });
         setOrderItems(initialItems);
+        setStocks(initialStocks);
       } else {
         toast.error("Erro ao carregar produtos");
       }
@@ -136,17 +140,17 @@ export function ManagerDashboard() {
       setIsLoadingSuggestions(true);
 
       // Preparar dados de estoque atual para enviar
-      const stocks: { [key: number]: number } = {};
-      orderItems.forEach((item, productId) => {
-        if (item.stock > 0) {
-          stocks[productId] = item.stock;
+      const stocksToSend: { [key: number]: number } = {};
+      stocks.forEach((stock, productId) => {
+        if (stock > 0) {
+          stocksToSend[productId] = stock;
         }
       });
 
       const res = await fetch("/api/predictions", {
         method: "POST",
         headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ stocks }),
+        body: JSON.stringify({ stocks: stocksToSend }),
       });
 
       if (res.ok) {
@@ -165,7 +169,7 @@ export function ManagerDashboard() {
     } finally {
       setIsLoadingSuggestions(false);
     }
-  }, [orderItems]);
+  }, [stocks]);
 
   // Recalcular sugestões quando estoques mudarem (com debounce)
   useEffect(() => {
@@ -177,13 +181,21 @@ export function ManagerDashboard() {
     }, 800); // 800ms de debounce
 
     return () => clearTimeout(timeoutId);
-  }, [orderItems, products.length, fetchSuggestions]);
+  }, [stocks, products.length, fetchSuggestions]);
 
   const updateOrderItem = (
     productId: number,
     field: keyof OrderItemData,
     value: string | number
   ) => {
+    if (field === "stock") {
+      setStocks((prev) => {
+        const newStocks = new Map(prev);
+        newStocks.set(productId, Number(value) || 0);
+        return newStocks;
+      });
+    }
+
     setOrderItems((prev) => {
       const newItems = new Map(prev);
       const item = newItems.get(productId);
