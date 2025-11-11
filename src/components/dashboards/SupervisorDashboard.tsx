@@ -242,7 +242,7 @@ export function SupervisorDashboard() {
                     </div>
                     <div className="flex items-center gap-2">
                       <ProductionStatusBadge
-                        status={order.productionStatus}
+                        status={order.productionStatus as "awaiting_start" | "in_progress" | "completed" | null}
                         size="sm"
                       />
                       <Button
@@ -314,7 +314,7 @@ export function SupervisorDashboard() {
                     <div className="mt-4">
                       <ProductionStatusManager
                         orderId={order.id}
-                        currentStatus={order.productionStatus}
+                        currentStatus={order.productionStatus as "awaiting_start" | "in_progress" | "completed" | null}
                       />
                     </div>
                   </CardContent>

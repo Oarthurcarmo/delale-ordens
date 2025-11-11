@@ -24,11 +24,7 @@ interface ProductionStatusManagerProps {
   orderId: string;
   currentStatus:
     | "awaiting_start"
-    | "in_preparation"
-    | "in_oven"
-    | "cooling"
-    | "packaging"
-    | "ready_for_pickup"
+    | "in_progress"
     | "completed"
     | null;
   lastUpdatedBy?: string | null;
@@ -37,13 +33,9 @@ interface ProductionStatusManagerProps {
 }
 
 const statusOptions = [
-  { value: "awaiting_start", label: "Aguardando Início" },
-  { value: "in_preparation", label: "Em Preparação" },
-  { value: "in_oven", label: "No Forno" },
-  { value: "cooling", label: "Esfriando" },
-  { value: "packaging", label: "Embalando" },
-  { value: "ready_for_pickup", label: "Pronto para Retirada" },
-  { value: "completed", label: "Concluído" },
+  { value: "awaiting_start", label: "AGUARDANDO INÍCIO" },
+  { value: "in_progress", label: "FAZENDO" },
+  { value: "completed", label: "FEITO" },
 ];
 
 export function ProductionStatusManager({
@@ -185,13 +177,9 @@ export function ProductionStatusManager({
         <div className="bg-muted/50 rounded-lg p-3 text-xs space-y-2">
           <p className="font-medium">Guia Rápido:</p>
           <ul className="space-y-1 text-muted-foreground">
-            <li>• Aguardando Início → Pedido confirmado, aguardando produção</li>
-            <li>• Em Preparação → Separando ingredientes e preparando massa</li>
-            <li>• No Forno → Produto está sendo assado</li>
-            <li>• Esfriando → Produto saiu do forno, aguardando esfriar</li>
-            <li>• Embalando → Finalizando e embalando o produto</li>
-            <li>• Pronto para Retirada → Produto finalizado e disponível</li>
-            <li>• Concluído → Produto entregue ao cliente</li>
+            <li>• AGUARDANDO INÍCIO → Pedido confirmado, aguardando início da produção</li>
+            <li>• FAZENDO → Pedido em produção</li>
+            <li>• FEITO → Pedido finalizado e pronto</li>
           </ul>
         </div>
       </CardContent>

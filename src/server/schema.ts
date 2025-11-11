@@ -29,13 +29,9 @@ export const orderStatus = pgEnum("order_status", [
 ]);
 
 export const productionStatus = pgEnum("production_status", [
-  "awaiting_start", // Aguardando início
-  "in_preparation", // Em preparação
-  "in_oven", // No forno
-  "cooling", // Esfriando
-  "packaging", // Embalando
-  "ready_for_pickup", // Pronto para retirada
-  "completed", // Concluído
+  "awaiting_start", // AGUARDANDO INÍCIO
+  "in_progress", // FAZENDO
+  "completed", // FEITO
 ]);
 
 export const stores = pgTable("stores", {

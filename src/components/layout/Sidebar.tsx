@@ -8,7 +8,6 @@ import {
   BarChart3,
   Package,
   Settings,
-  FileEdit,
   CheckSquare,
   TrendingUp,
 } from "lucide-react";
@@ -18,7 +17,7 @@ import { useAuth } from "@/lib/auth-context";
 const managerLinks = [
   { href: "/dashboard", label: "Novo Pedido", icon: Home },
   { href: "/dashboard/orders", label: "Meus Pedidos", icon: ClipboardList },
-  
+
   /*{
     href: "/dashboard/sales-history",
     label: "Histórico de Vendas",
@@ -28,11 +27,6 @@ const managerLinks = [
 
 const supervisorLinks = [
   { href: "/dashboard", label: "Pedidos Recebidos", icon: Package },
-  {
-    href: "/dashboard/edit-requests",
-    label: "Solicitações de Edição",
-    icon: FileEdit,
-  },
   {
     href: "/dashboard/item-requests",
     label: "Edições de Itens",
@@ -46,11 +40,6 @@ const ownerLinks = [
     href: "/dashboard/orders-overview",
     label: "Visão de Pedidos",
     icon: Package,
-  },
-  {
-    href: "/dashboard/edit-requests",
-    label: "Solicitações de Edição",
-    icon: FileEdit,
   },
   {
     href: "/dashboard/item-requests",

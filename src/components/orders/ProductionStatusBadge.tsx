@@ -2,21 +2,13 @@ import { Badge } from "@/components/ui/badge";
 import {
   Clock,
   ChefHat,
-  Flame,
-  Snowflake,
-  Package,
   CheckCircle2,
-  CircleCheck,
 } from "lucide-react";
 
 interface ProductionStatusBadgeProps {
   status:
     | "awaiting_start"
-    | "in_preparation"
-    | "in_oven"
-    | "cooling"
-    | "packaging"
-    | "ready_for_pickup"
+    | "in_progress"
     | "completed"
     | null
     | undefined;
@@ -26,43 +18,20 @@ interface ProductionStatusBadgeProps {
 
 const statusConfig = {
   awaiting_start: {
-    label: "Aguardando Início",
+    label: "AGUARDANDO INÍCIO",
     icon: Clock,
-    className: "bg-gray-100 text-gray-800 dark:bg-gray-800 dark:text-gray-200",
+    className: "bg-yellow-100 text-yellow-800 dark:bg-yellow-900 dark:text-yellow-200",
   },
-  in_preparation: {
-    label: "Em Preparação",
+  in_progress: {
+    label: "FAZENDO",
     icon: ChefHat,
     className: "bg-blue-100 text-blue-800 dark:bg-blue-900 dark:text-blue-200",
   },
-  in_oven: {
-    label: "No Forno",
-    icon: Flame,
-    className:
-      "bg-orange-100 text-orange-800 dark:bg-orange-900 dark:text-orange-200",
-  },
-  cooling: {
-    label: "Esfriando",
-    icon: Snowflake,
-    className: "bg-cyan-100 text-cyan-800 dark:bg-cyan-900 dark:text-cyan-200",
-  },
-  packaging: {
-    label: "Embalando",
-    icon: Package,
-    className:
-      "bg-purple-100 text-purple-800 dark:bg-purple-900 dark:text-purple-200",
-  },
-  ready_for_pickup: {
-    label: "Pronto para Retirada",
+  completed: {
+    label: "FEITO",
     icon: CheckCircle2,
     className:
       "bg-green-100 text-green-800 dark:bg-green-900 dark:text-green-200",
-  },
-  completed: {
-    label: "Concluído",
-    icon: CircleCheck,
-    className:
-      "bg-emerald-100 text-emerald-800 dark:bg-emerald-900 dark:text-emerald-200",
   },
 };
 

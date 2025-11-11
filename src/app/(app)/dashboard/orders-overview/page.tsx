@@ -253,7 +253,7 @@ export default function OrdersOverviewPage() {
                     </div>
                     <div className="flex items-center gap-2">
                       <ProductionStatusBadge
-                        status={order.productionStatus}
+                        status={order.productionStatus as "awaiting_start" | "completed" | "in_progress" | null}
                         size="sm"
                       />
                       <Button
@@ -335,7 +335,7 @@ export default function OrdersOverviewPage() {
 
                       <ProductionStatusManager
                         orderId={order.id}
-                        currentStatus={order.productionStatus}
+                        currentStatus={order.productionStatus as "awaiting_start" | "in_progress" | "completed" | null}
                       />
                     </div>
                   </CardContent>

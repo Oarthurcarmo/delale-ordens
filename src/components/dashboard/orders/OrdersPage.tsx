@@ -148,7 +148,7 @@ export function OrdersPage() {
                         </TableCell>
                         <TableCell>
                           <ProductionStatusBadge
-                            status={order.productionStatus}
+                            status={order.productionStatus as "awaiting_start" | "in_progress" | "completed" | null}
                             size="sm"
                           />
                         </TableCell>
