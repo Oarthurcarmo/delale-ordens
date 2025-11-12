@@ -100,6 +100,7 @@ export async function POST(req: Request) {
       items.map((item) => ({
         orderId,
         ...item,
+        productionQuantity: item.productionQuantity || 0,
         deliveryDate: item.deliveryDate ? item.deliveryDate : null,
       }))
     );

@@ -119,7 +119,8 @@ export const orderItems = pgTable("order_items", {
     .notNull()
     .references(() => products.id),
   stock: integer("stock").notNull(),
-  quantity: integer("quantity").notNull(),
+  quantity: integer("quantity").notNull(), // Encomendas
+  productionQuantity: integer("production_quantity").notNull().default(0), // Pedidos para Produção
   type: orderItemType("type").notNull(),
   clientName: varchar("client_name", { length: 256 }),
   deliveryDate: date("delivery_date"),

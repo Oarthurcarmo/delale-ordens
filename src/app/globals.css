@@ -45,31 +45,31 @@
 
 :root {
   --radius: 0.625rem;
-  
+
   /* Cores Base */
   --background: #faf9fb; /* Um branco levemente roxo para suavidade */
   --foreground: #0D041F;
-  
+
   /* Cards e Popovers */
   --card: #ffffff;
   --card-foreground: #0D041F;
   --popover: #ffffff;
   --popover-foreground: #0D041F;
-  
+
   /* Primário */
   --primary: #FD9FC6; /* Carnation Pink */
   --primary-foreground: #ffffff;
-  
+
   /* Secundário */
   --secondary: #F3CCD7; /* Mimi Pink */
   --secondary-foreground: #0D041F;
-  
+
   /* Mudo e Acento */
   --muted: #f5f3f7;
   --muted-foreground: #675777;
   --accent: #e8e5eb;
   --accent-foreground: #0D041F;
-  
+
   /* Outros */
   --destructive: #e51d1d;
   --border: #e8e5eb;
@@ -139,14 +139,14 @@
   --border: #282A30; /* Bordas suaves */
   --input: #282A30; /* Fundo para campos de input */
   --ring: #FD9FC6; /* Cor do foco/anel, usando o pink */
-  
+
   /* Gráficos: Cores da sua paleta, com o pink em destaque */
   --chart-1: #FD9FC6; /* Carnation Pink */
   --chart-2: #675777; /* Chinese Violet */
   --chart-3: #F3CCD7; /* Mimi Pink */
   --chart-4: #8f81a8; /* Um tom de violeta mais claro */
   --chart-5: #4e405a; /* Um tom de violeta mais escuro */
-  
+
   /* Sidebar: Similar aos cards, para coesão */
   --sidebar: #1C1D23; 
   --sidebar-foreground: #e0e0e0;

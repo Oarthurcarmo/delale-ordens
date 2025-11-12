@@ -156,6 +156,30 @@ export function OrderItemsEditRequestDialog({
       return;
     }
 
+    // Validar itens do tipo "Encomenda"
+    const invalidEncomendas = editData.filter(
+      (item) =>
+        item.newType === "Encomenda" &&
+        item.newQuantity > 0 && // Só valida se não está sendo excluído
+        (!item.newClientName ||
+          item.newClientName.trim() === "" ||
+          !item.newDeliveryDate ||
+          item.newDeliveryDate.trim() === "")
+    );
+
+    if (invalidEncomendas.length > 0) {
+      const productNames = invalidEncomendas
+        .map((item) => {
+          const orderItem = order?.items.find((i) => i.id === item.id);
+          return orderItem?.product.name || "Desconhecido";
+        })
+        .join(", ");
+      toast.error(
+        `Os seguintes produtos do tipo "Encomenda" precisam ter nome do cliente e data de entrega: ${productNames}`
+      );
+      return;
+    }
+
     setIsSubmitting(true);
 
     try {

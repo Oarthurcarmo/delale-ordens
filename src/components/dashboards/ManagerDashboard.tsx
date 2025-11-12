@@ -39,7 +39,8 @@ interface OrderItemData {
   productId: number;
   productName: string;
   stock: number;
-  quantity: number;
+  quantity: number; // Encomendas
+  productionQuantity: number; // Pedidos para Produção
   type: "Vitrine" | "Encomenda";
   clientName?: string;
   deliveryDate?: string;
@@ -136,6 +137,7 @@ export function ManagerDashboard() {
             productName: product.name,
             stock: 0,
             quantity: 0,
+            productionQuantity: 0,
             type: "Vitrine",
           });
         });
@@ -201,16 +203,41 @@ export function ManagerDashboard() {
   };
 
   const handleOpenSummary = () => {
-    const itemsWithQuantity = Array.from(orderItems.values()).filter(
-      (item) => item.quantity > 0
+    // Considerar itens que têm estoque, encomendas OU pedidos de produção
+    const itemsWithData = Array.from(orderItems.values()).filter(
+      (item) =>
+        item.stock > 0 || item.quantity > 0 || item.productionQuantity > 0
     );
 
-    if (itemsWithQuantity.length === 0) {
+    if (itemsWithData.length === 0) {
       toast.error("Adicione pelo menos um item ao pedido");
       return;
     }
 
-    // Encomendas são opcionais - não há validação obrigatória
+    // Validar apenas itens do tipo "Encomenda" que têm quantidade > 0
+    const itemsWithEncomendas = itemsWithData.filter(
+      (item) => item.quantity > 0
+    );
+
+    const invalidEncomendas = itemsWithEncomendas.filter(
+      (item) =>
+        item.type === "Encomenda" &&
+        (!item.clientName ||
+          item.clientName.trim() === "" ||
+          !item.deliveryDate ||
+          item.deliveryDate.trim() === "")
+    );
+
+    if (invalidEncomendas.length > 0) {
+      const productNames = invalidEncomendas
+        .map((item) => item.productName)
+        .join(", ");
+      toast.error(
+        `Os seguintes produtos do tipo "Encomenda" precisam ter nome do cliente e data de entrega: ${productNames}`
+      );
+      return;
+    }
+
     setShowSummary(true);
   };
 
@@ -224,11 +251,15 @@ export function ManagerDashboard() {
 
     try {
       const itemsToSend = Array.from(orderItems.values())
-        .filter((item) => item.quantity > 0)
+        .filter(
+          (item) =>
+            item.stock > 0 || item.quantity > 0 || item.productionQuantity > 0
+        )
         .map((item) => ({
           productId: item.productId,
           stock: item.stock,
           quantity: item.quantity,
+          productionQuantity: item.productionQuantity,
           type: item.type,
           clientName: item.clientName,
           deliveryDate: item.deliveryDate,
@@ -280,15 +311,24 @@ export function ManagerDashboard() {
   // Estatísticas do pedido
   const stats = useMemo(() => {
     const allItems = Array.from(orderItems.values());
-    const itemsWithEncomendas = allItems.filter((item) => item.quantity > 0);
-    const totalEncomendas = itemsWithEncomendas.reduce(
+    // Considerar itens que têm estoque, encomendas OU pedidos de produção
+    const itemsWithData = allItems.filter(
+      (item) =>
+        item.stock > 0 || item.quantity > 0 || item.productionQuantity > 0
+    );
+    const totalEncomendas = allItems.reduce(
       (sum, item) => sum + item.quantity,
+      0
+    );
+    const totalProduction = allItems.reduce(
+      (sum, item) => sum + item.productionQuantity,
       0
     );
 
     return {
-      totalItemsWithEncomendas: itemsWithEncomendas.length,
+      totalItemsWithData: itemsWithData.length,
       totalEncomendas,
+      totalProduction,
     };
   }, [orderItems]);
 
@@ -314,23 +354,31 @@ export function ManagerDashboard() {
         </div>
 
         {/* Resumo Compacto no Header */}
-        {stats.totalItemsWithEncomendas > 0 && (
+        {stats.totalItemsWithData > 0 && (
           <div className="flex items-center gap-3 p-4 bg-primary/5 border border-primary/20 rounded-lg">
             <ShoppingCart className="h-5 w-5 text-primary" />
             <div className="flex items-center gap-4 text-sm">
               <div>
                 <span className="font-bold text-lg text-primary">
-                  {stats.totalItemsWithEncomendas}
+                  {stats.totalItemsWithData}
                 </span>
                 <span className="text-muted-foreground ml-1">
-                  produtos com encomendas
+                  produtos no pedido
                 </span>
               </div>
-              <div className="h-4 w-px bg-border" />
-              <div>
-                <span className="font-semibold">{stats.totalEncomendas}</span>
-                <span className="text-muted-foreground ml-1">encomendas</span>
-              </div>
+              {stats.totalEncomendas > 0 && (
+                <>
+                  <div className="h-4 w-px bg-border" />
+                  <div>
+                    <span className="font-semibold">
+                      {stats.totalEncomendas}
+                    </span>
+                    <span className="text-muted-foreground ml-1">
+                      encomendas
+                    </span>
+                  </div>
+                </>
+              )}
             </div>
           </div>
         )}
@@ -517,6 +565,14 @@ export function ManagerDashboard() {
                           type="number"
                           min="0"
                           placeholder="0"
+                          value={item?.productionQuantity || ""}
+                          onChange={(e) => {
+                            updateOrderItem(
+                              product.id,
+                              "productionQuantity",
+                              parseInt(e.target.value) || 0
+                            );
+                          }}
                           className="h-9 text-center font-medium bg-white dark:bg-gray-900"
                           autoComplete="off"
                           onFocus={(e) => e.target.select()}
@@ -740,6 +796,14 @@ export function ManagerDashboard() {
                         type="number"
                         min="0"
                         placeholder="0"
+                        value={item?.productionQuantity || ""}
+                        onChange={(e) => {
+                          updateOrderItem(
+                            product.id,
+                            "productionQuantity",
+                            parseInt(e.target.value) || 0
+                          );
+                        }}
                         className="h-10 text-center font-medium bg-green-50 dark:bg-green-950/20"
                         autoComplete="off"
                         onFocus={(e) => e.target.select()}
@@ -818,7 +882,7 @@ export function ManagerDashboard() {
       )}
 
       {/* Botão Fixo de Revisar - Melhorado */}
-      {stats.totalItemsWithEncomendas > 0 && (
+      {stats.totalItemsWithData > 0 && (
         <div className="fixed bottom-6 right-6 z-50 animate-in slide-in-from-bottom-4">
           <Button
             onClick={handleOpenSummary}
@@ -828,13 +892,19 @@ export function ManagerDashboard() {
             <div className="relative">
               <ShoppingCart className="h-6 w-6" />
               <Badge className="absolute -top-2 -right-2 h-5 w-5 flex items-center justify-center p-0 bg-red-500 text-[10px] border-2 border-white">
-                {stats.totalItemsWithEncomendas}
+                {stats.totalItemsWithData}
               </Badge>
             </div>
             <div className="flex flex-col items-start">
               <span>Revisar Pedido</span>
               <span className="text-xs font-normal opacity-90">
-                {stats.totalEncomendas} encomendas
+                {stats.totalEncomendas > 0 && stats.totalProduction > 0
+                  ? `${stats.totalEncomendas} encomendas • ${stats.totalProduction} produção`
+                  : stats.totalEncomendas > 0
+                    ? `${stats.totalEncomendas} encomendas`
+                    : stats.totalProduction > 0
+                      ? `${stats.totalProduction} para produção`
+                      : "Apenas vitrine"}
               </span>
             </div>
           </Button>
@@ -846,7 +916,8 @@ export function ManagerDashboard() {
         open={showSummary}
         onOpenChange={setShowSummary}
         items={Array.from(orderItems.values()).filter(
-          (item) => item.quantity > 0
+          (item) =>
+            item.stock > 0 || item.quantity > 0 || item.productionQuantity > 0
         )}
         onConfirm={handleSubmitOrder}
         isSubmitting={isSubmitting}

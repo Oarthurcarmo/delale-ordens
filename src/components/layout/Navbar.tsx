@@ -1,50 +1,100 @@
 "use client";
 
-import { Sun, Moon, LogOut, User } from "lucide-react";
-import { useTheme } from "next-themes";
+import * as React from "react";
+import { useRouter } from "next/navigation";
+import { LogOut, Menu } from "lucide-react";
 import { Button } from "@/components/ui/button";
+import {
+  DropdownMenu,
+  DropdownMenuContent,
+  DropdownMenuItem,
+  DropdownMenuLabel,
+  DropdownMenuSeparator,
+  DropdownMenuTrigger,
+} from "@/components/ui/dropdown-menu";
+import { SidebarTrigger } from "@/components/ui/sidebar";
+import { Separator } from "@/components/ui/separator";
+import {
+  Breadcrumb,
+  BreadcrumbItem,
+  BreadcrumbLink,
+  BreadcrumbList,
+  BreadcrumbPage,
+  BreadcrumbSeparator,
+} from "@/components/ui/breadcrumb";
 import { useAuth } from "@/lib/auth-context";
+import { usePathname } from "next/navigation";
+import { ThemeToggle } from "@/components/theme-toggle";
 
-const roleLabels = {
-  manager: "Gerente",
-  supervisor: "Supervisor",
-  owner: "Dono(a)",
+const routeNames: Record<string, string> = {
+  "/dashboard": "Dashboard",
+  "/dashboard/orders": "Meus Pedidos",
+  "/dashboard/orders-overview": "Visão de Pedidos",
+  "/dashboard/item-requests": "Edições de Itens",
+  "/dashboard/analytics": "Análises e Métricas",
+  "/dashboard/admin": "Administração",
 };
 
 export function Navbar() {
-  const { setTheme, theme } = useTheme();
+  const router = useRouter();
   const { user, logout } = useAuth();
+  const pathname = usePathname();
+
+  const handleLogout = async () => {
+    await logout();
+    router.push("/login");
+  };
+
+  const currentPageName = routeNames[pathname] || "Dashboard";
 
   return (
-    <header className="bg-card shadow-sm border-b">
-      <nav className="container px-6 py-4 flex justify-between items-center">
-        <h1 className="text-2xl font-bold text-primary">
-          Ordem de Pedidos - Confeitaria
-        </h1>
-        <div className="flex items-center space-x-4">
-          {user && (
-            <div className="flex items-center gap-2 px-3 py-1 bg-muted rounded-md">
-              <User className="h-4 w-4 text-muted-foreground" />
-              <span className="font-medium text-sm">
-                {user.name} ({roleLabels[user.role]})
-              </span>
-            </div>
-          )}
-          <Button
-            variant="outline"
-            size="icon"
-            onClick={() => setTheme(theme === "light" ? "dark" : "light")}
-          >
-            <Sun className="h-[1.2rem] w-[1.2rem] rotate-0 scale-100 transition-all dark:-rotate-90 dark:scale-0" />
-            <Moon className="absolute h-[1.2rem] w-[1.2rem] rotate-90 scale-0 transition-all dark:rotate-0 dark:scale-100" />
-            <span className="sr-only">Alternar tema</span>
-          </Button>
-          <Button variant="destructive" onClick={logout}>
-            <LogOut className="mr-2 h-4 w-4" />
-            Sair
-          </Button>
-        </div>
-      </nav>
+    <header className="flex h-16 shrink-0 items-center gap-2 border-b px-4 bg-background">
+      <SidebarTrigger className="-ml-1" />
+      <Separator orientation="vertical" className="mr-2 h-4" />
+      
+      <Breadcrumb>
+        <BreadcrumbList>
+          <BreadcrumbItem className="hidden md:block">
+            <BreadcrumbLink href="/dashboard">
+              Confeitaria
+            </BreadcrumbLink>
+          </BreadcrumbItem>
+          <BreadcrumbSeparator className="hidden md:block" />
+          <BreadcrumbItem>
+            <BreadcrumbPage>{currentPageName}</BreadcrumbPage>
+          </BreadcrumbItem>
+        </BreadcrumbList>
+      </Breadcrumb>
+
+      <div className="ml-auto flex items-center gap-2">
+        <ThemeToggle />
+        <DropdownMenu>
+          <DropdownMenuTrigger asChild>
+            <Button variant="ghost" size="icon" className="rounded-full">
+              <div className="flex h-8 w-8 items-center justify-center rounded-full bg-primary text-primary-foreground">
+                <span className="text-sm font-semibold">
+                  {user?.name?.charAt(0).toUpperCase()}
+                </span>
+              </div>
+            </Button>
+          </DropdownMenuTrigger>
+          <DropdownMenuContent align="end" className="w-56">
+            <DropdownMenuLabel>
+              <div className="flex flex-col space-y-1">
+                <p className="text-sm font-medium leading-none">{user?.name}</p>
+                <p className="text-xs leading-none text-muted-foreground">
+                  {user?.email}
+                </p>
+              </div>
+            </DropdownMenuLabel>
+            <DropdownMenuSeparator />
+            <DropdownMenuItem onClick={handleLogout}>
+              <LogOut className="mr-2 h-4 w-4" />
+              <span>Sair</span>
+            </DropdownMenuItem>
+          </DropdownMenuContent>
+        </DropdownMenu>
+      </div>
     </header>
   );
 }
