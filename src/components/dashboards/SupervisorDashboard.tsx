@@ -54,15 +54,7 @@ interface Order {
   };
   createdAt: string;
   items: OrderItem[];
-  productionStatus:
-    | "awaiting_start"
-    | "in_preparation"
-    | "in_oven"
-    | "cooling"
-    | "packaging"
-    | "ready_for_pickup"
-    | "completed"
-    | null;
+  productionStatus: "awaiting_start" | "in_progress" | "completed" | null;
   productionUpdater?: {
     name: string;
   } | null;
@@ -97,11 +89,11 @@ export function SupervisorDashboard() {
 
   const handlePrintAll = () => {
     setIsPrinting(true);
-    
+
     // Pequeno delay para mostrar o feedback visual
     setTimeout(() => {
       window.print();
-      
+
       // Reset do estado após a janela de impressão
       setTimeout(() => {
         setIsPrinting(false);
@@ -153,8 +145,8 @@ export function SupervisorDashboard() {
             Visualize os pedidos de todas as filiais.
           </p>
         </div>
-        <Button 
-          onClick={handlePrintAll} 
+        <Button
+          onClick={handlePrintAll}
           className="print:hidden"
           disabled={isPrinting}
         >
@@ -242,7 +234,13 @@ export function SupervisorDashboard() {
                     </div>
                     <div className="flex items-center gap-2">
                       <ProductionStatusBadge
-                        status={order.productionStatus as "awaiting_start" | "in_progress" | "completed" | null}
+                        status={
+                          order.productionStatus as
+                            | "awaiting_start"
+                            | "in_progress"
+                            | "completed"
+                            | null
+                        }
                         size="sm"
                       />
                       <Button
@@ -314,7 +312,13 @@ export function SupervisorDashboard() {
                     <div className="mt-4">
                       <ProductionStatusManager
                         orderId={order.id}
-                        currentStatus={order.productionStatus as "awaiting_start" | "in_progress" | "completed" | null}
+                        currentStatus={
+                          order.productionStatus as
+                            | "awaiting_start"
+                            | "in_progress"
+                            | "completed"
+                            | null
+                        }
                       />
                     </div>
                   </CardContent>

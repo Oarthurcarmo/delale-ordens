@@ -32,6 +32,7 @@ interface Product {
   id: number;
   name: string;
   isClassA: boolean;
+  allowOrders: boolean;
 }
 
 interface OrderItemData {
@@ -209,18 +210,7 @@ export function ManagerDashboard() {
       return;
     }
 
-    // Validar encomendas - verificar se tem cliente e data quando houver quantidade
-    const invalidEncomendas = itemsWithQuantity.filter(
-      (item) => !item.clientName || !item.deliveryDate
-    );
-
-    if (invalidEncomendas.length > 0) {
-      toast.error(
-        "Preencha o nome do cliente e a data de entrega para todos os produtos com encomendas"
-      );
-      return;
-    }
-
+    // Encomendas são opcionais - não há validação obrigatória
     setShowSummary(true);
   };
 
@@ -487,22 +477,28 @@ export function ManagerDashboard() {
 
                       {/* Encomendas - Editável (Azul) */}
                       <TableCell className="bg-blue-50 dark:bg-blue-950/20">
-                        <Input
-                          type="number"
-                          min="0"
-                          placeholder="0"
-                          value={item?.quantity || ""}
-                          onChange={(e) => {
-                            updateOrderItem(
-                              product.id,
-                              "quantity",
-                              parseInt(e.target.value) || 0
-                            );
-                          }}
-                          className="h-9 text-center font-medium bg-white dark:bg-gray-900"
-                          autoComplete="off"
-                          onFocus={(e) => e.target.select()}
-                        />
+                        {product.allowOrders ? (
+                          <Input
+                            type="number"
+                            min="0"
+                            placeholder="0"
+                            value={item?.quantity || ""}
+                            onChange={(e) => {
+                              updateOrderItem(
+                                product.id,
+                                "quantity",
+                                parseInt(e.target.value) || 0
+                              );
+                            }}
+                            className="h-9 text-center font-medium bg-white dark:bg-gray-900"
+                            autoComplete="off"
+                            onFocus={(e) => e.target.select()}
+                          />
+                        ) : (
+                          <div className="text-center text-xs text-muted-foreground italic">
+                            Não disponível
+                          </div>
+                        )}
                       </TableCell>
 
                       {/* Sugestão de Produção - Calculada (Amarelo) */}
@@ -529,7 +525,11 @@ export function ManagerDashboard() {
 
                       {/* Detalhes da Encomenda */}
                       <TableCell className="p-2">
-                        {hasQuantity ? (
+                        {!product.allowOrders ? (
+                          <div className="text-center text-xs text-muted-foreground italic">
+                            —
+                          </div>
+                        ) : hasQuantity ? (
                           <div className="space-y-1.5 min-w-[200px]">
                             {/* Cliente */}
                             <div className="flex items-center gap-1.5">
@@ -710,20 +710,26 @@ export function ManagerDashboard() {
                       <Label className="text-xs text-muted-foreground font-medium">
                         Encomendas
                       </Label>
-                      <Input
-                        type="number"
-                        min="0"
-                        placeholder="0"
-                        value={item?.quantity || ""}
-                        onChange={(e) => {
-                          updateOrderItem(
-                            product.id,
-                            "quantity",
-                            parseInt(e.target.value) || 0
-                          );
-                        }}
-                        className="h-10 text-center font-medium bg-blue-50 dark:bg-blue-950/20"
-                      />
+                      {product.allowOrders ? (
+                        <Input
+                          type="number"
+                          min="0"
+                          placeholder="0"
+                          value={item?.quantity || ""}
+                          onChange={(e) => {
+                            updateOrderItem(
+                              product.id,
+                              "quantity",
+                              parseInt(e.target.value) || 0
+                            );
+                          }}
+                          className="h-10 text-center font-medium bg-blue-50 dark:bg-blue-950/20"
+                        />
+                      ) : (
+                        <div className="h-10 flex items-center justify-center rounded-md bg-muted/50 border text-xs text-muted-foreground italic">
+                          Não disponível para encomenda
+                        </div>
+                      )}
                     </div>
 
                     <div className="col-span-2 space-y-1.5">
@@ -741,11 +747,11 @@ export function ManagerDashboard() {
                     </div>
 
                     {/* Detalhes da Encomenda - Cards */}
-                    {hasQuantity && (
+                    {product.allowOrders && hasQuantity && (
                       <>
                         <div className="col-span-2 space-y-1.5 pt-2 border-t">
                           <Label className="text-xs text-muted-foreground font-medium">
-                            Nome do Cliente *
+                            Nome do Cliente
                           </Label>
                           <Input
                             type="text"
@@ -765,7 +771,7 @@ export function ManagerDashboard() {
 
                         <div className="col-span-2 space-y-1.5">
                           <Label className="text-xs text-muted-foreground font-medium">
-                            Data de Entrega *
+                            Data de Entrega
                           </Label>
                           <Input
                             type="date"

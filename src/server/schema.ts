@@ -54,6 +54,7 @@ export const products = pgTable("products", {
   id: serial("id").primaryKey(),
   name: varchar("name", { length: 256 }).notNull(),
   isClassA: boolean("is_class_a").default(false).notNull(),
+  allowOrders: boolean("allow_orders").default(true).notNull(),
 });
 
 export const productForecasts = pgTable("product_forecasts", {

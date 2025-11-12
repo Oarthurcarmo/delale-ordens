@@ -58,11 +58,7 @@ interface Order {
   items: OrderItem[];
   productionStatus:
     | "awaiting_start"
-    | "in_preparation"
-    | "in_oven"
-    | "cooling"
-    | "packaging"
-    | "ready_for_pickup"
+    | "in_progress"
     | "completed"
     | null;
   productionUpdater?: {

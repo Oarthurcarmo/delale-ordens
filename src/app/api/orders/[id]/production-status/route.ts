@@ -43,11 +43,7 @@ export async function PATCH(
     // Validar status
     const validStatuses = [
       "awaiting_start",
-      "in_preparation",
-      "in_oven",
-      "cooling",
-      "packaging",
-      "ready_for_pickup",
+      "in_progress",
       "completed",
     ];
 
@@ -79,10 +75,7 @@ export async function PATCH(
         productionUpdatedAt: new Date(),
         updatedAt: new Date(),
         // Atualizar status geral baseado no status de produção
-        ...(productionStatus === "in_preparation" ||
-        productionStatus === "in_oven" ||
-        productionStatus === "cooling" ||
-        productionStatus === "packaging"
+        ...(productionStatus === "in_progress"
           ? { status: "in_production" }
           : {}),
         ...(productionStatus === "completed"
