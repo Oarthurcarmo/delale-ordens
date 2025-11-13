@@ -47,9 +47,7 @@ export const orderItemSchema = z
   .refine(
     (data) => {
       // Pelo menos um dos campos deve ser maior que 0
-      return (
-        data.stock > 0 || data.quantity > 0 || data.productionQuantity > 0
-      );
+      return data.stock > 0 || data.quantity > 0 || data.productionQuantity > 0;
     },
     {
       message:
