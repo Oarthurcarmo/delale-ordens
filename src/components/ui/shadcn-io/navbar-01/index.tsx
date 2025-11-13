@@ -6,7 +6,6 @@ import { useEffect, useState, useRef } from 'react';
 import {
   NavigationMenu,
   NavigationMenuItem,
-  NavigationMenuLink,
   NavigationMenuList,
 } from '@/components/ui/navigation-menu';
 import {
@@ -104,12 +103,12 @@ export const Navbar01 = React.forwardRef<HTMLElement, Navbar01Props>(
     {
       className,
       logo = <Logo />,
-      logoHref = '#',
+     
       navigationLinks = defaultNavigationLinks,
       signInText = 'Sign In',
-      signInHref = '#signin',
+    
       ctaText = 'Get Started',
-      ctaHref = '#get-started',
+   
       onSignInClick,
       onCtaClick,
       ...props

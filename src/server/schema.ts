@@ -66,6 +66,24 @@ export const productForecasts = pgTable("product_forecasts", {
   averageDailyForecast: integer("average_daily_forecast").notNull(),
 });
 
+export const dailyForecasts = pgTable(
+  "daily_forecasts",
+  {
+    id: serial("id").primaryKey(),
+    productId: integer("product_id")
+      .notNull()
+      .references(() => products.id, { onDelete: "cascade" }),
+    forecastDate: date("forecast_date").notNull(),
+    quantity: integer("quantity").notNull(),
+  },
+  (table) => ({
+    productDateUnique: {
+      columns: [table.productId, table.forecastDate],
+      name: "daily_forecasts_product_date_unique",
+    },
+  })
+);
+
 export const salesHistory = pgTable("sales_history", {
   id: serial("id").primaryKey(),
   productId: integer("product_id")
@@ -191,6 +209,7 @@ export const storesRelations = relations(stores, ({ many }) => ({
 export const productsRelations = relations(products, ({ one, many }) => ({
   orderItems: many(orderItems),
   salesHistory: many(salesHistory),
+  dailyForecasts: many(dailyForecasts),
   forecast: one(productForecasts, {
     fields: [products.id],
     references: [productForecasts.productId],
@@ -206,6 +225,13 @@ export const productForecastsRelations = relations(
     }),
   })
 );
+
+export const dailyForecastsRelations = relations(dailyForecasts, ({ one }) => ({
+  product: one(products, {
+    fields: [dailyForecasts.productId],
+    references: [products.id],
+  }),
+}));
 
 export const ordersRelations = relations(orders, ({ one, many }) => ({
   store: one(stores, {
