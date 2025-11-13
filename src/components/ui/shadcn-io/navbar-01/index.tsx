@@ -1,20 +1,20 @@
 'use client';
 
 import * as React from 'react';
-import { Button } from '@repo/shadcn-ui/components/ui/button';
+import { Button } from '@/components/ui/button';
 import { useEffect, useState, useRef } from 'react';
 import {
   NavigationMenu,
   NavigationMenuItem,
   NavigationMenuLink,
   NavigationMenuList,
-} from '@repo/shadcn-ui/components/ui/navigation-menu';
+} from '@/components/ui/navigation-menu';
 import {
   Popover,
   PopoverContent,
   PopoverTrigger,
-} from '@repo/shadcn-ui/components/ui/popover';
-import { cn } from '@repo/shadcn-ui/lib/utils';
+} from '@/components/ui/popover';
+import { cn } from '@/lib/utils';
 
 // Simple logo component for the navbar
 const Logo = (props: React.SVGAttributes<SVGElement>) => {
