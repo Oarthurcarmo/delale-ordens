@@ -38,9 +38,11 @@ interface OrderItem {
   };
   stock: number;
   quantity: number;
+  productionQuantity?: number;
   type: string;
   clientName?: string;
   deliveryDate?: string;
+  observation?: string;
 }
 
 interface Order {
@@ -265,10 +267,12 @@ export function SupervisorDashboard() {
                         <TableRow>
                           <TableHead>Produto</TableHead>
                           <TableHead>Estoque</TableHead>
-                          <TableHead>Quantidade</TableHead>
+                          <TableHead>Encomendas</TableHead>
+                          <TableHead>Produção</TableHead>
                           <TableHead>Tipo</TableHead>
                           <TableHead>Cliente</TableHead>
                           <TableHead>Data Entrega</TableHead>
+                          <TableHead>Observação</TableHead>
                         </TableRow>
                       </TableHeader>
                       <TableBody>
@@ -278,8 +282,11 @@ export function SupervisorDashboard() {
                               {item.product.name}
                             </TableCell>
                             <TableCell>{item.stock}</TableCell>
-                            <TableCell className="font-bold">
+                            <TableCell className="font-bold text-purple-600">
                               {item.quantity}
+                            </TableCell>
+                            <TableCell className="font-bold text-green-600">
+                              {item.productionQuantity || 0}
                             </TableCell>
                             <TableCell>
                               <Badge
@@ -302,6 +309,11 @@ export function SupervisorDashboard() {
                                 ? new Date(
                                     item.deliveryDate
                                   ).toLocaleDateString("pt-BR")
+                                : "—"}
+                            </TableCell>
+                            <TableCell>
+                              {item.type === "Encomenda" && item.observation
+                                ? item.observation
                                 : "—"}
                             </TableCell>
                           </TableRow>

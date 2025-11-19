@@ -28,9 +28,11 @@ interface OrderItem {
   };
   stock: number;
   quantity: number;
+  productionQuantity?: number;
   type: "Vitrine" | "Encomenda";
   clientName?: string;
   deliveryDate?: string;
+  observation?: string;
 }
 
 interface Order {
@@ -115,7 +117,8 @@ export function OrderDetailDialog({
                     <TableRow>
                       <TableHead>Produto</TableHead>
                       <TableHead>Estoque</TableHead>
-                      <TableHead>Quantidade</TableHead>
+                      <TableHead>Encomendas</TableHead>
+                      <TableHead>Produção</TableHead>
                       <TableHead>Tipo</TableHead>
                       <TableHead>Detalhes</TableHead>
                     </TableRow>
@@ -127,8 +130,11 @@ export function OrderDetailDialog({
                           {item.product.name}
                         </TableCell>
                         <TableCell>{item.stock}</TableCell>
-                        <TableCell className="font-bold">
+                        <TableCell className="font-bold text-purple-600">
                           {item.quantity}
+                        </TableCell>
+                        <TableCell className="font-bold text-green-600">
+                          {item.productionQuantity || 0}
                         </TableCell>
                         <TableCell>
                           <Badge
@@ -153,6 +159,11 @@ export function OrderDetailDialog({
                                   {new Date(
                                     item.deliveryDate
                                   ).toLocaleDateString("pt-BR")}
+                                </div>
+                              )}
+                              {item.observation && (
+                                <div>
+                                  <strong>Observação:</strong> {item.observation}
                                 </div>
                               )}
                             </div>

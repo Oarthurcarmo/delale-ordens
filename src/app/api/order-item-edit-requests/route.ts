@@ -152,6 +152,7 @@ export async function POST(req: NextRequest) {
         newType,
         newClientName,
         newDeliveryDate,
+        newObservation,
       } = requestData;
 
       // Buscar item original
@@ -174,7 +175,9 @@ export async function POST(req: NextRequest) {
         (newClientName !== undefined &&
           newClientName !== originalItem.clientName) ||
         (newDeliveryDate !== undefined &&
-          newDeliveryDate !== originalItem.deliveryDate);
+          newDeliveryDate !== originalItem.deliveryDate) ||
+        (newObservation !== undefined &&
+          newObservation !== originalItem.observation);
 
       if (!hasChanges) {
         continue; // Pula itens sem alterações
@@ -192,11 +195,13 @@ export async function POST(req: NextRequest) {
           originalType: originalItem.type,
           originalClientName: originalItem.clientName,
           originalDeliveryDate: originalItem.deliveryDate,
+          originalObservation: originalItem.observation,
           newStock: newStock ?? originalItem.stock,
           newQuantity: newQuantity ?? originalItem.quantity,
           newType: newType ?? originalItem.type,
           newClientName: newClientName ?? originalItem.clientName,
           newDeliveryDate: newDeliveryDate ?? originalItem.deliveryDate,
+          newObservation: newObservation ?? originalItem.observation,
         })
         .returning();
 

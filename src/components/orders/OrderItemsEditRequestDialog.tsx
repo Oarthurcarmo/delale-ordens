@@ -32,6 +32,7 @@ interface OrderItem {
   type: "Vitrine" | "Encomenda";
   clientName?: string;
   deliveryDate?: string;
+  observation?: string;
 }
 
 interface Order {
@@ -47,11 +48,13 @@ interface EditItemData {
   originalType: "Vitrine" | "Encomenda";
   originalClientName?: string;
   originalDeliveryDate?: string;
+  originalObservation?: string;
   newStock: number;
   newQuantity: number;
   newType: "Vitrine" | "Encomenda";
   newClientName?: string;
   newDeliveryDate?: string;
+  newObservation?: string;
 }
 
 interface OrderItemsEditRequestDialogProps {
@@ -81,11 +84,13 @@ export function OrderItemsEditRequestDialog({
         originalType: item.type,
         originalClientName: item.clientName,
         originalDeliveryDate: item.deliveryDate,
+        originalObservation: item.observation,
         newStock: item.stock,
         newQuantity: item.quantity,
         newType: item.type,
         newClientName: item.clientName,
         newDeliveryDate: item.deliveryDate,
+        newObservation: item.observation,
       }));
       setEditData(initialData);
     }
@@ -99,7 +104,8 @@ export function OrderItemsEditRequestDialog({
         item.newQuantity !== item.originalQuantity ||
         item.newType !== item.originalType ||
         item.newClientName !== item.originalClientName ||
-        item.newDeliveryDate !== item.originalDeliveryDate
+        item.newDeliveryDate !== item.originalDeliveryDate ||
+        item.newObservation !== item.originalObservation
     ).length;
     setChangesCount(changes);
   }, [editData]);
@@ -127,6 +133,7 @@ export function OrderItemsEditRequestDialog({
             newType: item.originalType,
             newClientName: item.originalClientName,
             newDeliveryDate: item.originalDeliveryDate,
+            newObservation: item.originalObservation,
           };
         }
         return item;
@@ -140,7 +147,8 @@ export function OrderItemsEditRequestDialog({
       item.newQuantity !== item.originalQuantity ||
       item.newType !== item.originalType ||
       item.newClientName !== item.originalClientName ||
-      item.newDeliveryDate !== item.originalDeliveryDate
+      item.newDeliveryDate !== item.originalDeliveryDate ||
+      item.newObservation !== item.originalObservation
     );
   };
 
@@ -191,6 +199,7 @@ export function OrderItemsEditRequestDialog({
         newType: item.newType,
         newClientName: item.newClientName || null,
         newDeliveryDate: item.newDeliveryDate || null,
+        newObservation: item.newObservation || null,
       }));
 
       const response = await fetch("/api/order-item-edit-requests", {
@@ -456,6 +465,39 @@ export function OrderItemsEditRequestDialog({
                         </div>
                       )}
                     </div>
+
+                    {/* Observação (apenas para encomendas) - campo de largura completa */}
+                    {item.newType === "Encomenda" && (
+                      <div className="space-y-2 mt-4">
+                        <Label htmlFor={`observation-${item.id}`}>
+                          Observação
+                        </Label>
+                        <Input
+                          id={`observation-${item.id}`}
+                          value={item.newObservation || ""}
+                          onChange={(e) =>
+                            updateItem(
+                              item.id,
+                              "newObservation",
+                              e.target.value
+                            )
+                          }
+                          className={
+                            item.newObservation !== item.originalObservation
+                              ? "border-orange-400"
+                              : ""
+                          }
+                          placeholder="Adicione observações sobre a encomenda"
+                          maxLength={500}
+                        />
+                        {item.newObservation !== item.originalObservation && (
+                          <p className="text-xs text-orange-600">
+                            Original:{" "}
+                            {item.originalObservation || "Não informado"}
+                          </p>
+                        )}
+                      </div>
+                    )}
                   </div>
                 );
               })}

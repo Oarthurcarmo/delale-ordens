@@ -52,6 +52,7 @@ export async function GET() {
         orderBy: (orders, { desc }) => [desc(orders.createdAt)],
       });
     }
+
     return NextResponse.json(userOrders);
   } catch (error) {
     console.error("Error fetching orders:", error);
@@ -96,14 +97,19 @@ export async function POST(req: Request) {
       .returning();
 
     const orderId = newOrder[0].id;
-    await db.insert(orderItems).values(
-      items.map((item) => ({
-        orderId,
-        ...item,
-        productionQuantity: item.productionQuantity || 0,
-        deliveryDate: item.deliveryDate ? item.deliveryDate : null,
-      }))
-    );
+    const itemsToInsert = items.map((item) => ({
+      orderId,
+      productId: item.productId,
+      stock: item.stock,
+      quantity: item.quantity,
+      productionQuantity: item.productionQuantity || 0,
+      type: item.type,
+      clientName: item.clientName || null,
+      deliveryDate: item.deliveryDate || null,
+      observation: item.observation || null,
+    }));
+
+    await db.insert(orderItems).values(itemsToInsert);
 
     // Registrar histórico de pedidos para previsões futuras
     const today = new Date();

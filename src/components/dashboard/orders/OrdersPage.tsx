@@ -38,6 +38,7 @@ interface OrderItem {
   type: "Vitrine" | "Encomenda";
   clientName?: string;
   deliveryDate?: string;
+  observation?: string;
 }
 
 interface Order {

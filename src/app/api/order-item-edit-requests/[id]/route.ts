@@ -84,6 +84,7 @@ export async function PATCH(
             type: request.newType!,
             clientName: request.newClientName,
             deliveryDate: request.newDeliveryDate,
+            observation: request.newObservation,
           })
           .where(eq(orderItems.id, request.orderItemId));
       }

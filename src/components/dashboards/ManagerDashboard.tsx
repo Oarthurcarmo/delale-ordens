@@ -161,7 +161,14 @@ export function ManagerDashboard() {
       const newItems = new Map(prev);
       const item = newItems.get(productId);
       if (item) {
-        newItems.set(productId, { ...item, [field]: value });
+        const updatedItem = { ...item, [field]: value };
+        
+        // Definir tipo automaticamente baseado na quantidade de encomendas
+        if (field === "quantity") {
+          updatedItem.type = (value as number) > 0 ? "Encomenda" : "Vitrine";
+        }
+        
+        newItems.set(productId, updatedItem);
       }
       return newItems;
     });
@@ -594,7 +601,7 @@ export function ManagerDashboard() {
                               </span>
                               <Input
                                 type="text"
-                                placeholder="Nome do cliente"
+                                placeholder="Nome do cliente *"
                                 value={item?.clientName || ""}
                                 onChange={(e) => {
                                   updateOrderItem(
@@ -813,9 +820,15 @@ export function ManagerDashboard() {
                     {/* Detalhes da Encomenda - Cards */}
                     {product.allowOrders && hasQuantity && (
                       <>
-                        <div className="col-span-2 space-y-1.5 pt-2 border-t">
+                        <div className="col-span-2 pt-2 border-t">
+                          <p className="text-xs text-amber-600 dark:text-amber-400 font-medium mb-2">
+                            💡 Este item é uma Encomenda. Preencha os dados obrigatórios:
+                          </p>
+                        </div>
+
+                        <div className="col-span-2 space-y-1.5">
                           <Label className="text-xs text-muted-foreground font-medium">
-                            Nome do Cliente
+                            Nome do Cliente *
                           </Label>
                           <Input
                             type="text"
@@ -835,7 +848,7 @@ export function ManagerDashboard() {
 
                         <div className="col-span-2 space-y-1.5">
                           <Label className="text-xs text-muted-foreground font-medium">
-                            Data de Entrega
+                            Data de Entrega *
                           </Label>
                           <Input
                             type="date"
@@ -871,6 +884,7 @@ export function ManagerDashboard() {
                             autoComplete="off"
                           />
                         </div>
+
                       </>
                     )}
                   </div>

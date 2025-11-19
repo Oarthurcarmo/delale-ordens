@@ -77,6 +77,7 @@ export const orderItemEditRequestSchema = z
     newType: z.enum(["Vitrine", "Encomenda"]),
     newClientName: z.string().nullish(),
     newDeliveryDate: z.string().nullish(),
+    newObservation: z.string().nullish(),
   })
   .refine(
     (data) => {

@@ -40,9 +40,11 @@ interface OrderItem {
   };
   stock: number;
   quantity: number;
+  productionQuantity?: number;
   type: "Vitrine" | "Encomenda";
   clientName?: string;
   deliveryDate?: string;
+  observation?: string;
 }
 
 interface Order {
@@ -56,11 +58,7 @@ interface Order {
   };
   createdAt: string;
   items: OrderItem[];
-  productionStatus:
-    | "awaiting_start"
-    | "in_progress"
-    | "completed"
-    | null;
+  productionStatus: "awaiting_start" | "in_progress" | "completed" | null;
   productionUpdater?: {
     name: string;
   } | null;
@@ -98,11 +96,11 @@ export default function OrdersOverviewPage() {
 
   const handlePrintAll = () => {
     setIsPrinting(true);
-    
+
     // Pequeno delay para mostrar o feedback visual
     setTimeout(() => {
       window.print();
-      
+
       // Reset do estado após a janela de impressão
       setTimeout(() => {
         setIsPrinting(false);
@@ -147,8 +145,8 @@ export default function OrdersOverviewPage() {
             Visualize e gerencie todos os pedidos de todas as filiais
           </p>
         </div>
-        <Button 
-          onClick={handlePrintAll} 
+        <Button
+          onClick={handlePrintAll}
           className="print:hidden"
           disabled={isPrinting}
         >
@@ -249,7 +247,13 @@ export default function OrdersOverviewPage() {
                     </div>
                     <div className="flex items-center gap-2">
                       <ProductionStatusBadge
-                        status={order.productionStatus as "awaiting_start" | "completed" | "in_progress" | null}
+                        status={
+                          order.productionStatus as
+                            | "awaiting_start"
+                            | "completed"
+                            | "in_progress"
+                            | null
+                        }
                         size="sm"
                       />
                       <Button
@@ -285,10 +289,12 @@ export default function OrdersOverviewPage() {
                           <TableRow>
                             <TableHead>Produto</TableHead>
                             <TableHead>Estoque</TableHead>
-                            <TableHead>Quantidade</TableHead>
+                            <TableHead>Encomendas</TableHead>
+                            <TableHead>Produção</TableHead>
                             <TableHead>Tipo</TableHead>
                             <TableHead>Cliente</TableHead>
                             <TableHead>Data Entrega</TableHead>
+                            <TableHead>Observação</TableHead>
                           </TableRow>
                         </TableHeader>
                         <TableBody>
@@ -298,8 +304,11 @@ export default function OrdersOverviewPage() {
                                 {item.product.name}
                               </TableCell>
                               <TableCell>{item.stock}</TableCell>
-                              <TableCell className="font-bold">
+                              <TableCell className="font-bold text-purple-600">
                                 {item.quantity}
+                              </TableCell>
+                              <TableCell className="font-bold text-green-600">
+                                {item.productionQuantity || 0}
                               </TableCell>
                               <TableCell>
                                 <Badge
@@ -324,6 +333,11 @@ export default function OrdersOverviewPage() {
                                     ).toLocaleDateString("pt-BR")
                                   : "—"}
                               </TableCell>
+                              <TableCell>
+                                {item.type === "Encomenda" && item.observation
+                                  ? item.observation
+                                  : "—"}
+                              </TableCell>
                             </TableRow>
                           ))}
                         </TableBody>
@@ -331,7 +345,13 @@ export default function OrdersOverviewPage() {
 
                       <ProductionStatusManager
                         orderId={order.id}
-                        currentStatus={order.productionStatus as "awaiting_start" | "in_progress" | "completed" | null}
+                        currentStatus={
+                          order.productionStatus as
+                            | "awaiting_start"
+                            | "in_progress"
+                            | "completed"
+                            | null
+                        }
                       />
                     </div>
                   </CardContent>

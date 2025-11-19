@@ -176,12 +176,14 @@ export const orderItemEditRequests = pgTable("order_item_edit_requests", {
   originalType: orderItemType("original_type").notNull(),
   originalClientName: varchar("original_client_name", { length: 256 }),
   originalDeliveryDate: date("original_delivery_date"),
+  originalObservation: varchar("original_observation", { length: 500 }),
   // Novos valores solicitados
   newStock: integer("new_stock"),
   newQuantity: integer("new_quantity"),
   newType: orderItemType("new_type"),
   newClientName: varchar("new_client_name", { length: 256 }),
   newDeliveryDate: date("new_delivery_date"),
+  newObservation: varchar("new_observation", { length: 500 }),
   // Status e decisão
   status: requestStatus("status").default("pending").notNull(),
   decidedBy: integer("decided_by").references(() => users.id),

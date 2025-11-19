@@ -95,6 +95,7 @@ export async function POST(req: NextRequest) {
               type: request.newType!,
               clientName: request.newClientName,
               deliveryDate: request.newDeliveryDate,
+              observation: request.newObservation,
             })
             .where(eq(orderItems.id, request.orderItemId));
           results.updated++;
