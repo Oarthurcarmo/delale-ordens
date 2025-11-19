@@ -11,9 +11,9 @@ export default function AppLayout({ children }: { children: React.ReactNode }) {
     <AuthProvider>
       <SidebarProvider>
         <AppSidebar />
-        <SidebarInset>
+        <SidebarInset className="print:m-0 print:w-full print:overflow-visible">
           <Navbar />
-          <main className="flex-1 p-6 overflow-auto">{children}</main>
+          <main className="flex-1 p-6 overflow-auto print:p-0 print:overflow-visible">{children}</main>
         </SidebarInset>
       </SidebarProvider>
       <Toaster position="top-right" richColors />

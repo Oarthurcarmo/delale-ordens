@@ -74,10 +74,7 @@ export function OrderDetailDialog({
 
   return (
     <>
-      <Dialog
-        open={open && !showItemsEditDialog}
-        onOpenChange={onOpenChange}
-      >
+      <Dialog open={open && !showItemsEditDialog} onOpenChange={onOpenChange}>
         <DialogContent className="max-w-4xl!">
           <DialogHeader>
             <DialogTitle className="text-2xl">Detalhes do Pedido</DialogTitle>
@@ -163,7 +160,8 @@ export function OrderDetailDialog({
                               )}
                               {item.observation && (
                                 <div>
-                                  <strong>Observação:</strong> {item.observation}
+                                  <strong>Observação:</strong>{" "}
+                                  {item.observation}
                                 </div>
                               )}
                             </div>

@@ -52,11 +52,7 @@ interface Order {
   };
   createdAt: string;
   items: OrderItem[];
-  productionStatus:
-    | "awaiting_start"
-    | "in_progress"
-    | "completed"
-    | null;
+  productionStatus: "awaiting_start" | "in_progress" | "completed" | null;
   productionUpdater?: {
     name: string;
   } | null;
@@ -145,7 +141,13 @@ export function OrdersPage() {
                         </TableCell>
                         <TableCell>
                           <ProductionStatusBadge
-                            status={order.productionStatus as "awaiting_start" | "in_progress" | "completed" | null}
+                            status={
+                              order.productionStatus as
+                                | "awaiting_start"
+                                | "in_progress"
+                                | "completed"
+                                | null
+                            }
                             size="sm"
                           />
                         </TableCell>

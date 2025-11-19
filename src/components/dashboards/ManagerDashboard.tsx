@@ -162,12 +162,12 @@ export function ManagerDashboard() {
       const item = newItems.get(productId);
       if (item) {
         const updatedItem = { ...item, [field]: value };
-        
+
         // Definir tipo automaticamente baseado na quantidade de encomendas
         if (field === "quantity") {
           updatedItem.type = (value as number) > 0 ? "Encomenda" : "Vitrine";
         }
-        
+
         newItems.set(productId, updatedItem);
       }
       return newItems;
@@ -822,7 +822,8 @@ export function ManagerDashboard() {
                       <>
                         <div className="col-span-2 pt-2 border-t">
                           <p className="text-xs text-amber-600 dark:text-amber-400 font-medium mb-2">
-                            💡 Este item é uma Encomenda. Preencha os dados obrigatórios:
+                            💡 Este item é uma Encomenda. Preencha os dados
+                            obrigatórios:
                           </p>
                         </div>
 
@@ -884,7 +885,6 @@ export function ManagerDashboard() {
                             autoComplete="off"
                           />
                         </div>
-
                       </>
                     )}
                   </div>
