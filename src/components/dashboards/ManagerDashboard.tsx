@@ -4,7 +4,6 @@ import { useState, useEffect, useMemo } from "react";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
-import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
 import {
   Table,
@@ -22,11 +21,23 @@ import {
   ShoppingCart,
   Package,
   X,
-  Check,
   TrendingUp,
   Table as TableIcon,
   LayoutGrid,
+  Box,
+  User,
+  FileText,
+  CalendarDays,
+  Info,
+  Store,
+  History,
 } from "lucide-react";
+import {
+  Tooltip,
+  TooltipContent,
+  TooltipProvider,
+  TooltipTrigger,
+} from "@/components/ui/tooltip";
 
 interface Product {
   id: number;
@@ -173,40 +184,8 @@ export function ManagerDashboard() {
       return newItems;
     });
 
-    // Recalculate production suggestion when stock or quantity (encomendas) changes
-    if (field === "stock" || field === "quantity") {
-      setForecasts((prev) => {
-        const newForecasts = new Map(prev);
-        const forecast = newForecasts.get(productId);
-        const item = orderItems.get(productId);
-
-        if (forecast && item) {
-          // Get updated values
-          const stock = field === "stock" ? Number(value) || 0 : item.stock;
-          const orders =
-            field === "quantity" ? Number(value) || 0 : item.quantity;
-          const forecastValue = forecast.forecast;
-
-          // Apply the Excel formula:
-          // If orders > forecast: production = orders + (forecast × 0.8) - stock
-          // Else: production = (forecast × 0.8) - stock + orders
-          let suggestedProduction: number;
-          const forecastVitrine = forecastValue * 0.8;
-
-          if (orders > forecastValue) {
-            suggestedProduction = orders + forecastVitrine - stock;
-          } else {
-            suggestedProduction = forecastVitrine - stock + orders;
-          }
-
-          newForecasts.set(productId, {
-            ...forecast,
-            suggestedProduction: Math.max(0, Math.round(suggestedProduction)),
-          });
-        }
-        return newForecasts;
-      });
-    }
+    // A sugestão é mantida fixa após ser recebida da API inicialmente
+    // Não recalculamos quando estoque ou quantidade mudam para manter a sugestão original
   };
 
   const handleOpenSummary = () => {
@@ -339,137 +318,174 @@ export function ManagerDashboard() {
     };
   }, [orderItems]);
 
+  const formattedDate = useMemo(() => {
+    return new Intl.DateTimeFormat("pt-BR", {
+      weekday: "long",
+      day: "numeric",
+      month: "long",
+    }).format(new Date());
+  }, []);
+
   if (isLoading) {
     return (
-      <div className="flex items-center justify-center h-full">
-        <div className="animate-spin rounded-full h-12 w-12 border-b-2 border-primary"></div>
+      <div className="flex items-center justify-center h-[calc(100vh-200px)]">
+        <div className="flex flex-col items-center gap-4">
+          <div className="animate-spin rounded-full h-12 w-12 border-b-2 border-primary"></div>
+          <p className="text-muted-foreground animate-pulse">
+            Carregando catálogo...
+          </p>
+        </div>
       </div>
     );
   }
 
   return (
-    <div className="space-y-6 pb-24">
-      {/* Cabeçalho com Resumo Flutuante */}
-      <div className="flex flex-col md:flex-row md:items-center md:justify-between gap-4">
-        <div>
-          <h2 className="text-3xl font-bold tracking-tight">
-            Criar Novo Pedido
+    <div className="space-y-8 pb-32 max-w-[1600px] mx-auto">
+      {/* Cabeçalho Moderno */}
+      <div className="flex flex-col md:flex-row md:items-end md:justify-between gap-6 border-b pb-6">
+        <div className="space-y-1">
+          <h2 className="text-3xl font-bold tracking-tight text-foreground">
+            Nova Ordem de Produção
           </h2>
-          <p className="text-muted-foreground mt-1">
-            Adicione produtos de forma rápida e intuitiva
-          </p>
+          <div className="flex items-center gap-2 text-muted-foreground">
+            <span className="capitalize">{formattedDate}</span>
+            <span>•</span>
+            <span>Loja {user?.storeId}</span>
+          </div>
         </div>
 
-        {/* Resumo Compacto no Header */}
+        {/* Resumo Rápido */}
         {stats.totalItemsWithData > 0 && (
-          <div className="flex items-center gap-3 p-4 bg-primary/5 border border-primary/20 rounded-lg">
-            <ShoppingCart className="h-5 w-5 text-primary" />
-            <div className="flex items-center gap-4 text-sm">
-              <div>
-                <span className="font-bold text-lg text-primary">
-                  {stats.totalItemsWithData}
-                </span>
-                <span className="text-muted-foreground ml-1">
-                  produtos no pedido
-                </span>
+          <div className="flex items-center gap-6 px-6 py-3 bg-card border rounded-full shadow-sm animate-in fade-in slide-in-from-right-4">
+            <div className="flex items-center gap-3">
+              <div className="p-2 bg-primary/10 rounded-full">
+                <ShoppingCart className="h-4 w-4 text-primary" />
               </div>
-              {stats.totalEncomendas > 0 && (
-                <>
-                  <div className="h-4 w-px bg-border" />
-                  <div>
-                    <span className="font-semibold">
-                      {stats.totalEncomendas}
-                    </span>
-                    <span className="text-muted-foreground ml-1">
-                      encomendas
-                    </span>
-                  </div>
-                </>
-              )}
+              <div>
+                <p className="text-sm font-medium text-foreground">
+                  {stats.totalItemsWithData} Itens
+                </p>
+                <p className="text-xs text-muted-foreground">selecionados</p>
+              </div>
             </div>
+
+            {(stats.totalEncomendas > 0 || stats.totalProduction > 0) && (
+              <>
+                <div className="h-8 w-px bg-border" />
+                <div className="flex gap-6 text-sm">
+                  {stats.totalEncomendas > 0 && (
+                    <div className="flex flex-col">
+                      <span className="font-bold text-foreground">
+                        {stats.totalEncomendas}
+                      </span>
+                      <span className="text-xs text-muted-foreground">
+                        Encomendas
+                      </span>
+                    </div>
+                  )}
+                  {stats.totalProduction > 0 && (
+                    <div className="flex flex-col">
+                      <span className="font-bold text-foreground">
+                        {stats.totalProduction}
+                      </span>
+                      <span className="text-xs text-muted-foreground">
+                        Produção
+                      </span>
+                    </div>
+                  )}
+                </div>
+              </>
+            )}
           </div>
         )}
       </div>
 
-      {/* Busca e Filtros */}
-      <Card>
-        <CardContent className="pt-6">
-          <div className="flex flex-col sm:flex-row gap-3">
-            <div className="relative flex-1">
-              <Search className="absolute left-3 top-1/2 -translate-y-1/2 h-5 w-5 text-muted-foreground" />
-              <Input
-                placeholder="Buscar produtos por nome..."
-                value={searchTerm}
-                onChange={(e) => setSearchTerm(e.target.value)}
-                className="pl-10 h-11 text-base"
-              />
-              {searchTerm && (
-                <Button
-                  variant="ghost"
-                  size="sm"
-                  className="absolute right-1 top-1/2 -translate-y-1/2 h-8 w-8 p-0"
-                  onClick={() => setSearchTerm("")}
-                >
-                  <X className="h-4 w-4" />
-                </Button>
-              )}
-            </div>
+      {/* Barra de Ferramentas Limpa */}
+      <div className="flex flex-col sm:flex-row justify-between items-center gap-4 sticky top-4 z-40 bg-background/80 backdrop-blur-md p-4 rounded-2xl border shadow-sm">
+        <div className="relative w-full sm:w-96 group">
+          <Search className="absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 text-muted-foreground group-focus-within:text-primary transition-colors" />
+          <Input
+            placeholder="Buscar produtos..."
+            value={searchTerm}
+            onChange={(e) => setSearchTerm(e.target.value)}
+            className="pl-10 bg-muted/50 border-transparent focus:bg-background focus:border-input transition-all duration-300 hover:bg-muted/80"
+          />
+          {searchTerm && (
+            <Button
+              variant="ghost"
+              size="icon"
+              className="absolute right-1 top-1/2 -translate-y-1/2 h-8 w-8 hover:bg-background/50"
+              onClick={() => setSearchTerm("")}
+            >
+              <X className="h-3 w-3" />
+            </Button>
+          )}
+        </div>
 
-            {/* Toggle View Mode */}
-            <div className="flex gap-2 items-center">
-              <div className="flex gap-1 p-1 bg-muted rounded-lg">
-                <Button
-                  variant={viewMode === "table" ? "default" : "ghost"}
-                  size="sm"
-                  onClick={() => setViewMode("table")}
-                  className="h-9 px-3"
-                >
-                  <TableIcon className="h-4 w-4 mr-2" />
-                  Tabela
-                </Button>
-                <Button
-                  variant={viewMode === "cards" ? "default" : "ghost"}
-                  size="sm"
-                  onClick={() => setViewMode("cards")}
-                  className="h-9 px-3"
-                >
-                  <LayoutGrid className="h-4 w-4 mr-2" />
-                  Cards
-                </Button>
-              </div>
-            </div>
-          </div>
-        </CardContent>
-      </Card>
+        <div className="flex bg-muted/50 p-1 rounded-lg border border-transparent hover:border-border transition-colors">
+          <Button
+            variant={viewMode === "table" ? "secondary" : "ghost"}
+            size="sm"
+            onClick={() => setViewMode("table")}
+            className={`h-8 px-4 text-xs font-medium transition-all ${viewMode === "table" ? "shadow-sm" : ""}`}
+          >
+            <TableIcon className="h-3.5 w-3.5 mr-2" />
+            Lista
+          </Button>
+          <Button
+            variant={viewMode === "cards" ? "secondary" : "ghost"}
+            size="sm"
+            onClick={() => setViewMode("cards")}
+            className={`h-8 px-4 text-xs font-medium transition-all ${viewMode === "cards" ? "shadow-sm" : ""}`}
+          >
+            <LayoutGrid className="h-3.5 w-3.5 mr-2" />
+            Cards
+          </Button>
+        </div>
+      </div>
 
-      {/* Tabela/Cards de Produtos */}
-      {viewMode === "table" ? (
-        /* TABELA VIEW - Otimizado para entrada rápida */
-        <Card>
-          <CardContent className="p-0">
+      {/* Conteúdo Principal */}
+      <TooltipProvider>
+        {viewMode === "table" ? (
+          <div className="rounded-xl border bg-card shadow-sm overflow-hidden">
             <Table>
-              <TableHeader>
-                <TableRow className="border-b-2">
-                  <TableHead className="w-[20%] font-semibold">
+              <TableHeader className="bg-muted/30">
+                <TableRow className="hover:bg-transparent border-b-primary/10">
+                  <TableHead className="w-[28%] font-medium text-xs uppercase tracking-wider text-muted-foreground py-4 pl-6">
                     Produto
                   </TableHead>
-                  <TableHead className="w-[10%] text-center font-semibold">
-                    Estoque Atual
+                  <TableHead className="w-[10%] text-center font-medium text-xs uppercase tracking-wider text-muted-foreground">
+                    <div className="flex items-center justify-center gap-1.5">
+                      <Store className="h-3.5 w-3.5" />
+                      Estoque
+                    </div>
                   </TableHead>
-                  <TableHead className="w-[10%] text-center font-semibold bg-muted/30">
-                    Previsão
+                  <TableHead className="w-[10%] text-center font-medium text-xs uppercase tracking-wider text-muted-foreground">
+                    <div className="flex items-center justify-center gap-1.5">
+                      <History className="h-3.5 w-3.5" />
+                      Previsão
+                    </div>
                   </TableHead>
-                  <TableHead className="w-[10%] text-center font-semibold">
-                    Encomendas
+                  <TableHead className="w-[12%] text-center font-medium text-xs uppercase tracking-wider text-muted-foreground">
+                    <div className="flex items-center justify-center gap-1.5">
+                      <User className="h-3.5 w-3.5" />
+                      Encomendas
+                    </div>
                   </TableHead>
-                  <TableHead className="w-[15%] text-center font-semibold bg-primary/5">
-                    Sugestão de Produção
+                  <TableHead className="w-[12%] text-center font-medium text-xs uppercase tracking-wider text-muted-foreground">
+                    <div className="flex items-center justify-center gap-1.5">
+                      <Info className="h-3.5 w-3.5" />
+                      Sugestão
+                    </div>
                   </TableHead>
-                  <TableHead className="w-[15%] text-center font-semibold bg-green-50 dark:bg-green-950/20">
-                    Pedidos para Produção
+                  <TableHead className="w-[12%] text-center font-medium text-xs uppercase tracking-wider text-muted-foreground">
+                    <div className="flex items-center justify-center gap-1.5">
+                      <Package className="h-3.5 w-3.5" />
+                      Produzir
+                    </div>
                   </TableHead>
-                  <TableHead className="w-[20%] text-center font-semibold">
-                    Detalhes da Encomenda
+                  <TableHead className="w-[16%] text-center font-medium text-xs uppercase tracking-wider text-muted-foreground">
+                    Detalhes
                   </TableHead>
                 </TableRow>
               </TableHeader>
@@ -478,20 +494,52 @@ export function ManagerDashboard() {
                   const item = orderItems.get(product.id);
                   const forecast = forecasts.get(product.id);
                   const hasQuantity = (item?.quantity || 0) > 0;
+                  const hasProduction = (item?.productionQuantity || 0) > 0;
+                  const isActive = hasQuantity || hasProduction;
+
+                  // Cores baseadas na primeira letra para dar variedade visual (pseudo-imagem)
+                  const colors = [
+                    "bg-red-100 text-red-600 dark:bg-red-900/20 dark:text-red-400",
+                    "bg-orange-100 text-orange-600 dark:bg-orange-900/20 dark:text-orange-400",
+                    "bg-amber-100 text-amber-600 dark:bg-amber-900/20 dark:text-amber-400",
+                    "bg-yellow-100 text-yellow-600 dark:bg-yellow-900/20 dark:text-yellow-400",
+                    "bg-lime-100 text-lime-600 dark:bg-lime-900/20 dark:text-lime-400",
+                    "bg-green-100 text-green-600 dark:bg-green-900/20 dark:text-green-400",
+                    "bg-emerald-100 text-emerald-600 dark:bg-emerald-900/20 dark:text-emerald-400",
+                    "bg-teal-100 text-teal-600 dark:bg-teal-900/20 dark:text-teal-400",
+                    "bg-cyan-100 text-cyan-600 dark:bg-cyan-900/20 dark:text-cyan-400",
+                    "bg-sky-100 text-sky-600 dark:bg-sky-900/20 dark:text-sky-400",
+                    "bg-blue-100 text-blue-600 dark:bg-blue-900/20 dark:text-blue-400",
+                    "bg-indigo-100 text-indigo-600 dark:bg-indigo-900/20 dark:text-indigo-400",
+                    "bg-violet-100 text-violet-600 dark:bg-violet-900/20 dark:text-violet-400",
+                    "bg-purple-100 text-purple-600 dark:bg-purple-900/20 dark:text-purple-400",
+                    "bg-fuchsia-100 text-fuchsia-600 dark:bg-fuchsia-900/20 dark:text-fuchsia-400",
+                    "bg-pink-100 text-pink-600 dark:bg-pink-900/20 dark:text-pink-400",
+                    "bg-rose-100 text-rose-600 dark:bg-rose-900/20 dark:text-rose-400",
+                  ];
+                  const colorClass =
+                    colors[product.name.charCodeAt(0) % colors.length];
 
                   return (
                     <TableRow
                       key={product.id}
-                      className={hasQuantity ? "bg-primary/5" : ""}
+                      className={`group transition-colors hover:bg-muted/40 ${isActive ? "bg-primary/5" : ""}`}
                     >
-                      <TableCell>
-                        <div className="flex items-center gap-2">
-                          <div className="flex flex-col">
-                            <span className="font-medium">{product.name}</span>
+                      <TableCell className="py-3 pl-6">
+                        <div className="flex items-center gap-3">
+                          <div
+                            className={`h-10 w-10 rounded-lg flex items-center justify-center shrink-0 ${colorClass}`}
+                          >
+                            <Box className="h-5 w-5" />
+                          </div>
+                          <div className="flex flex-col gap-1">
+                            <span className="font-medium text-sm text-foreground">
+                              {product.name}
+                            </span>
                             {product.isClassA && (
                               <Badge
-                                variant="secondary"
-                                className="w-fit mt-1 text-xs gap-1"
+                                variant="outline"
+                                className="w-fit text-[10px] px-1.5 py-0 h-5 gap-1 border-amber-200 text-amber-700 bg-amber-50 dark:bg-amber-900/20 dark:text-amber-400 dark:border-amber-800"
                               >
                                 <TrendingUp className="h-2.5 w-2.5" />
                                 Classe A
@@ -501,165 +549,187 @@ export function ManagerDashboard() {
                         </div>
                       </TableCell>
 
-                      {/* Estoque Atual - Editável (Azul) */}
-                      <TableCell className="bg-blue-50 dark:bg-blue-950/20">
-                        <Input
-                          type="number"
-                          min="0"
-                          placeholder="0"
-                          value={item?.stock || ""}
-                          onChange={(e) => {
-                            updateOrderItem(
-                              product.id,
-                              "stock",
-                              parseInt(e.target.value) || 0
-                            );
-                          }}
-                          className="h-9 text-center font-medium bg-white dark:bg-gray-900"
-                          autoComplete="off"
-                          onFocus={(e) => e.target.select()}
-                        />
-                      </TableCell>
-
-                      {/* Previsão - Não editável (Laranja) */}
-                      <TableCell className="bg-orange-50 dark:bg-orange-950/20 text-center">
-                        <div className="inline-flex items-center gap-1.5 px-3 py-1 rounded-md bg-orange-100 dark:bg-orange-900/30">
-                          <span className="font-semibold text-base">
-                            {forecast?.forecast || 0}
-                          </span>
-                        </div>
-                      </TableCell>
-
-                      {/* Encomendas - Editável (Azul) */}
-                      <TableCell className="bg-blue-50 dark:bg-blue-950/20">
-                        {product.allowOrders ? (
+                      {/* Estoque Atual */}
+                      <TableCell>
+                        <div className="flex justify-center relative group/input">
                           <Input
                             type="number"
                             min="0"
-                            placeholder="0"
-                            value={item?.quantity || ""}
+                            placeholder="-"
+                            value={item?.stock || ""}
                             onChange={(e) => {
                               updateOrderItem(
                                 product.id,
-                                "quantity",
+                                "stock",
                                 parseInt(e.target.value) || 0
                               );
                             }}
-                            className="h-9 text-center font-medium bg-white dark:bg-gray-900"
+                            className="h-9 w-20 text-center bg-transparent border-border/50 focus:bg-background focus:border-primary transition-all peer"
                             autoComplete="off"
                             onFocus={(e) => e.target.select()}
                           />
-                        ) : (
-                          <div className="text-center text-xs text-muted-foreground italic">
-                            Não disponível
-                          </div>
-                        )}
-                      </TableCell>
-
-                      {/* Sugestão de Produção - Calculada (Amarelo) */}
-                      <TableCell className="bg-yellow-50 dark:bg-yellow-950/20 text-center">
-                        <div className="inline-flex items-center gap-2 px-4 py-1.5 rounded-md bg-yellow-100 dark:bg-yellow-900/30 border border-yellow-200 dark:border-yellow-800">
-                          <Package className="h-4 w-4 text-yellow-700 dark:text-yellow-300" />
-                          <span className="font-bold text-lg text-yellow-700 dark:text-yellow-300">
-                            {forecast?.suggestedProduction || 0}
-                          </span>
+                          <div className="absolute inset-0 -z-10 bg-muted/20 rounded-md opacity-0 group-hover/input:opacity-100 transition-opacity" />
                         </div>
                       </TableCell>
 
-                      {/* Pedidos para Produção - Editável (Verde) */}
-                      <TableCell className="bg-green-50 dark:bg-green-950/20">
-                        <Input
-                          type="number"
-                          min="0"
-                          placeholder="0"
-                          value={item?.productionQuantity || ""}
-                          onChange={(e) => {
-                            updateOrderItem(
-                              product.id,
-                              "productionQuantity",
-                              parseInt(e.target.value) || 0
-                            );
-                          }}
-                          className="h-9 text-center font-medium bg-white dark:bg-gray-900"
-                          autoComplete="off"
-                          onFocus={(e) => e.target.select()}
-                        />
+                      {/* Previsão */}
+                      <TableCell>
+                        <div className="flex justify-center">
+                          <div className="h-9 w-16 flex items-center justify-center rounded-md bg-muted/30 text-sm font-medium text-muted-foreground border border-transparent">
+                            {forecast?.forecast || "-"}
+                          </div>
+                        </div>
                       </TableCell>
 
-                      {/* Detalhes da Encomenda */}
+                      {/* Encomendas */}
+                      <TableCell>
+                        <div className="flex justify-center">
+                          {product.allowOrders ? (
+                            <Input
+                              type="number"
+                              min="0"
+                              placeholder="-"
+                              value={item?.quantity || ""}
+                              onChange={(e) => {
+                                updateOrderItem(
+                                  product.id,
+                                  "quantity",
+                                  parseInt(e.target.value) || 0
+                                );
+                              }}
+                              className={`h-9 w-20 text-center transition-all ${
+                                hasQuantity
+                                  ? "border-primary ring-1 ring-primary/20 bg-primary/5 font-semibold text-primary"
+                                  : "bg-transparent border-border/50 focus:bg-background focus:border-primary"
+                              }`}
+                              autoComplete="off"
+                              onFocus={(e) => e.target.select()}
+                            />
+                          ) : (
+                            <Tooltip>
+                              <TooltipTrigger>
+                                <span className="text-xs text-muted-foreground/40 select-none cursor-not-allowed flex items-center justify-center w-20 h-9 bg-muted/10 rounded-md">
+                                  <X className="h-3 w-3 mr-1" />
+                                  N/A
+                                </span>
+                              </TooltipTrigger>
+                              <TooltipContent>
+                                Este produto não aceita encomendas
+                              </TooltipContent>
+                            </Tooltip>
+                          )}
+                        </div>
+                      </TableCell>
+
+                      {/* Sugestão (ReadOnly) */}
+                      <TableCell>
+                        <div className="flex justify-center">
+                          {forecast && forecast.suggestedProduction > 0 ? (
+                            <Badge
+                              variant="secondary"
+                              className="h-8 px-3 gap-1.5 bg-amber-100 text-amber-700 hover:bg-amber-100 dark:bg-amber-900/30 dark:text-amber-400 font-semibold text-sm border border-amber-200 dark:border-amber-800"
+                            >
+                              <Info className="h-3.5 w-3.5" />
+                              <span>{forecast.suggestedProduction}</span>
+                              <span className="text-xs opacity-80">un</span>
+                            </Badge>
+                          ) : (
+                            <span className="text-xs text-muted-foreground/30">
+                              -
+                            </span>
+                          )}
+                        </div>
+                      </TableCell>
+
+                      {/* Pedidos para Produção */}
+                      <TableCell>
+                        <div className="flex justify-center">
+                          <Input
+                            type="number"
+                            min="0"
+                            placeholder="-"
+                            value={item?.productionQuantity || ""}
+                            onChange={(e) => {
+                              updateOrderItem(
+                                product.id,
+                                "productionQuantity",
+                                parseInt(e.target.value) || 0
+                              );
+                            }}
+                            className={`h-9 w-20 text-center transition-all ${
+                              hasProduction
+                                ? "border-emerald-500 ring-1 ring-emerald-500/20 bg-emerald-50 dark:bg-emerald-900/20 font-semibold text-emerald-700 dark:text-emerald-400"
+                                : "bg-transparent border-border/50 focus:bg-background focus:border-primary"
+                            }`}
+                            autoComplete="off"
+                            onFocus={(e) => e.target.select()}
+                          />
+                        </div>
+                      </TableCell>
+
+                      {/* Detalhes */}
                       <TableCell className="p-2">
                         {!product.allowOrders ? (
-                          <div className="text-center text-xs text-muted-foreground italic">
+                          <div className="text-center text-xs text-muted-foreground/30">
                             —
                           </div>
                         ) : hasQuantity ? (
-                          <div className="space-y-1.5 min-w-[200px]">
-                            {/* Cliente */}
-                            <div className="flex items-center gap-1.5">
-                              <span className="text-xs text-muted-foreground shrink-0">
-                                👤
-                              </span>
+                          <div className="space-y-2 min-w-[260px] p-3 bg-background/50 backdrop-blur-sm rounded-lg border shadow-sm animate-in zoom-in-95 duration-200">
+                            <div className="flex items-center gap-2 relative">
+                              <User className="absolute left-2.5 top-1/2 -translate-y-1/2 h-3.5 w-3.5 text-muted-foreground" />
                               <Input
                                 type="text"
                                 placeholder="Nome do cliente *"
                                 value={item?.clientName || ""}
-                                onChange={(e) => {
+                                onChange={(e) =>
                                   updateOrderItem(
                                     product.id,
                                     "clientName",
                                     e.target.value
-                                  );
-                                }}
-                                className="h-7 text-xs flex-1"
-                                autoComplete="off"
+                                  )
+                                }
+                                className="h-8 text-xs flex-1 pl-8 bg-muted/30 border-transparent focus:bg-background focus:border-primary"
                               />
                             </div>
-
-                            {/* Data de Entrega */}
-                            <div className="flex items-center gap-1.5">
-                              <span className="text-xs text-muted-foreground shrink-0">
-                                📅
-                              </span>
-                              <Input
-                                type="date"
-                                value={item?.deliveryDate || ""}
-                                onChange={(e) => {
-                                  updateOrderItem(
-                                    product.id,
-                                    "deliveryDate",
-                                    e.target.value
-                                  );
-                                }}
-                                className="h-7 text-xs flex-1"
-                                min={new Date().toISOString().split("T")[0]}
-                              />
-                            </div>
-
-                            {/* Observação */}
-                            <div className="flex items-center gap-1.5">
-                              <span className="text-xs text-muted-foreground shrink-0">
-                                💬
-                              </span>
-                              <Input
-                                type="text"
-                                placeholder="Obs (opcional)"
-                                value={item?.observation || ""}
-                                onChange={(e) => {
-                                  updateOrderItem(
-                                    product.id,
-                                    "observation",
-                                    e.target.value
-                                  );
-                                }}
-                                className="h-7 text-xs flex-1"
-                                autoComplete="off"
-                              />
+                            <div className="flex gap-2">
+                              <div className="relative w-36">
+                                <CalendarDays className="absolute left-2.5 top-1/2 -translate-y-1/2 h-3.5 w-3.5 text-muted-foreground" />
+                                <Input
+                                  type="date"
+                                  value={item?.deliveryDate || ""}
+                                  onChange={(e) =>
+                                    updateOrderItem(
+                                      product.id,
+                                      "deliveryDate",
+                                      e.target.value
+                                    )
+                                  }
+                                  className="h-8 text-xs pl-8 bg-muted/30 border-transparent focus:bg-background focus:border-primary"
+                                  min={new Date().toISOString().split("T")[0]}
+                                />
+                              </div>
+                              <div className="relative flex-1">
+                                <FileText className="absolute left-2.5 top-1/2 -translate-y-1/2 h-3.5 w-3.5 text-muted-foreground" />
+                                <Input
+                                  type="text"
+                                  placeholder="Obs..."
+                                  value={item?.observation || ""}
+                                  onChange={(e) =>
+                                    updateOrderItem(
+                                      product.id,
+                                      "observation",
+                                      e.target.value
+                                    )
+                                  }
+                                  className="h-8 text-xs pl-8 flex-1 bg-muted/30 border-transparent focus:bg-background focus:border-primary"
+                                />
+                              </div>
                             </div>
                           </div>
                         ) : (
-                          <span className="text-muted-foreground text-sm">
+                          <div className="text-center text-xs text-muted-foreground/30">
                             —
-                          </span>
+                          </div>
                         )}
                       </TableCell>
                     </TableRow>
@@ -667,258 +737,296 @@ export function ManagerDashboard() {
                 })}
               </TableBody>
             </Table>
-          </CardContent>
-        </Card>
-      ) : filteredProducts.length === 0 ? (
-        <Card className="p-12">
-          <div className="text-center">
-            <Package className="h-12 w-12 text-muted-foreground mx-auto mb-4" />
-            <h3 className="text-lg font-semibold mb-2">
+          </div>
+        ) : filteredProducts.length === 0 ? (
+          <div className="flex flex-col items-center justify-center py-24 text-center bg-muted/10 rounded-3xl border border-dashed border-muted-foreground/25">
+            <div className="bg-muted/30 p-6 rounded-full mb-6">
+              <Package className="h-10 w-10 text-muted-foreground/50" />
+            </div>
+            <h3 className="text-xl font-bold text-foreground">
               Nenhum produto encontrado
             </h3>
-            <p className="text-muted-foreground">
-              {searchTerm
-                ? "Tente buscar com outros termos"
-                : "Nenhum produto disponível"}
+            <p className="text-muted-foreground text-base mt-2 max-w-xs mx-auto">
+              Não encontramos nada com &quot;{searchTerm}&quot;. Tente outro
+              termo ou limpe a busca.
             </p>
           </div>
-        </Card>
-      ) : (
-        /* CARDS VIEW - Mantido para visualização detalhada */
-        <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
-          {filteredProducts.map((product) => {
-            const item = orderItems.get(product.id);
-            const forecast = forecasts.get(product.id);
-            const hasQuantity = (item?.quantity || 0) > 0;
+        ) : (
+          /* CARDS VIEW - Modernizado com "Imagens" */
+          <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 gap-6">
+            {filteredProducts.map((product) => {
+              const item = orderItems.get(product.id);
+              const forecast = forecasts.get(product.id);
+              const hasQuantity = (item?.quantity || 0) > 0;
+              const isActive =
+                hasQuantity || (item?.productionQuantity || 0) > 0;
 
-            return (
-              <Card
-                key={product.id}
-                className={`transition-all hover:shadow-lg ${
-                  hasQuantity
-                    ? "border-primary/50 shadow-md ring-2 ring-primary/10"
-                    : "hover:border-primary/30"
-                }`}
-              >
-                <CardHeader className="pb-3">
-                  <div className="flex items-start justify-between gap-2">
-                    <div className="flex-1">
-                      <CardTitle className="text-base leading-tight">
-                        {product.name}
-                      </CardTitle>
-                      {product.isClassA && (
-                        <Badge variant="secondary" className="mt-1.5 gap-1">
-                          <TrendingUp className="h-3 w-3" />
-                          Classe A
+              // Cores para o header do card
+              const colors = [
+                "from-red-500/10 to-red-500/5 text-red-600",
+                "from-orange-500/10 to-orange-500/5 text-orange-600",
+                "from-amber-500/10 to-amber-500/5 text-amber-600",
+                "from-yellow-500/10 to-yellow-500/5 text-yellow-600",
+                "from-lime-500/10 to-lime-500/5 text-lime-600",
+                "from-green-500/10 to-green-500/5 text-green-600",
+                "from-emerald-500/10 to-emerald-500/5 text-emerald-600",
+                "from-teal-500/10 to-teal-500/5 text-teal-600",
+                "from-cyan-500/10 to-cyan-500/5 text-cyan-600",
+                "from-sky-500/10 to-sky-500/5 text-sky-600",
+                "from-blue-500/10 to-blue-500/5 text-blue-600",
+                "from-indigo-500/10 to-indigo-500/5 text-indigo-600",
+                "from-violet-500/10 to-violet-500/5 text-violet-600",
+                "from-purple-500/10 to-purple-500/5 text-purple-600",
+                "from-fuchsia-500/10 to-fuchsia-500/5 text-fuchsia-600",
+                "from-pink-500/10 to-pink-500/5 text-pink-600",
+                "from-rose-500/10 to-rose-500/5 text-rose-600",
+              ];
+              const colorIndex = product.name.charCodeAt(0) % colors.length;
+              const bgClass = colors[colorIndex];
+
+              return (
+                <div
+                  key={product.id}
+                  className={`group relative bg-card rounded-2xl border transition-all duration-300 hover:shadow-lg hover:-translate-y-1 overflow-hidden flex flex-col ${
+                    isActive
+                      ? "ring-1 ring-primary border-primary/20 shadow-md"
+                      : "hover:border-primary/30"
+                  }`}
+                >
+                  {/* Header Visual com Placeholder de Imagem */}
+                  <div
+                    className={`h-24 bg-gradient-to-br ${bgClass} flex items-center justify-center relative`}
+                  >
+                    <div className="absolute inset-0 bg-white/40 dark:bg-black/20 backdrop-blur-[1px]" />
+                    <Box className="h-10 w-10 opacity-80 relative z-10" />
+
+                    {product.isClassA && (
+                      <div className="absolute top-3 right-3 z-20">
+                        <Badge
+                          variant="secondary"
+                          className="gap-1 bg-white/90 dark:bg-black/80 backdrop-blur shadow-sm text-[10px] font-bold border-0"
+                        >
+                          <TrendingUp className="h-3 w-3 text-amber-500" />
+                          CLASSE A
                         </Badge>
-                      )}
-                    </div>
-                    {hasQuantity && item && (
-                      <Badge className="gap-1 bg-primary text-primary-foreground shrink-0">
-                        <Check className="h-3 w-3" />
-                        {item.quantity}
-                      </Badge>
+                      </div>
                     )}
                   </div>
-                </CardHeader>
-                <CardContent className="space-y-3 pt-0">
-                  {/* Suggestion Badge */}
-                  {forecast && forecast.suggestedProduction > 0 && (
-                    <div className="flex items-center justify-center gap-2 p-3 rounded-lg bg-primary/5 border border-primary/20">
-                      <Package className="h-5 w-5 text-primary" />
-                      <div className="text-center">
-                        <div className="text-xs text-muted-foreground font-medium">
-                          Sugestão de Produção
-                        </div>
-                        <div className="text-2xl font-bold text-primary">
-                          {forecast.suggestedProduction}
-                        </div>
-                      </div>
-                    </div>
-                  )}
 
-                  <div className="grid grid-cols-2 gap-3">
-                    <div className="space-y-1.5">
-                      <Label className="text-xs text-muted-foreground font-medium">
-                        Estoque Atual
-                      </Label>
-                      <Input
-                        type="number"
-                        min="0"
-                        placeholder="0"
-                        value={item?.stock || ""}
-                        onChange={(e) => {
-                          updateOrderItem(
-                            product.id,
-                            "stock",
-                            parseInt(e.target.value) || 0
-                          );
-                        }}
-                        className="h-10 text-center font-medium bg-blue-50 dark:bg-blue-950/20"
-                      />
-                    </div>
-
-                    <div className="space-y-1.5">
-                      <Label className="text-xs text-muted-foreground font-medium">
-                        Previsão
-                      </Label>
-                      <div className="h-10 flex items-center justify-center rounded-md bg-orange-100 dark:bg-orange-900/30 border border-orange-200 dark:border-orange-800">
-                        <span className="font-semibold">
-                          {forecast?.forecast || 0}
-                        </span>
+                  <div className="p-5 flex flex-col flex-1">
+                    <div className="mb-4">
+                      <h3
+                        className="font-bold text-lg text-foreground line-clamp-1"
+                        title={product.name}
+                      >
+                        {product.name}
+                      </h3>
+                      <div className="flex items-center gap-2 mt-2">
+                        
+                        {/* Previsão */}
+                        {forecast && (
+                          <div className="flex items-center gap-1.5 px-2.5 py-1 rounded-md bg-blue-50/80 border border-blue-200/60 dark:bg-blue-950/30 dark:border-blue-900/50">
+                            <History className="h-3 w-3 text-blue-600 dark:text-blue-400" />
+                            <span className="text-xs font-medium text-blue-700 dark:text-blue-300">
+                              Previsão:
+                            </span>
+                            <span className="text-sm font-bold text-blue-900 dark:text-blue-100">
+                              {forecast.forecast || 0}
+                            </span>
+                          </div>
+                        )}
+                        {/* Sugestão */}
+                        {forecast && forecast.suggestedProduction > 0 && (
+                          <div className="flex items-center gap-1.5 px-2.5 py-1 rounded-md bg-amber-50/80 border border-amber-200/60 dark:bg-amber-950/30 dark:border-amber-900/50">
+                            <Info className="h-3 w-3 text-amber-600 dark:text-amber-400" />
+                            <span className="text-xs font-medium text-amber-700 dark:text-amber-300">
+                              Sugestão:
+                            </span>
+                            <span className="text-sm font-bold text-amber-900 dark:text-amber-100">
+                              {forecast.suggestedProduction}
+                            </span>
+                          </div>
+                        )}
                       </div>
                     </div>
 
-                    <div className="col-span-2 space-y-1.5">
-                      <Label className="text-xs text-muted-foreground font-medium">
-                        Encomendas
-                      </Label>
-                      {product.allowOrders ? (
-                        <Input
-                          type="number"
-                          min="0"
-                          placeholder="0"
-                          value={item?.quantity || ""}
-                          onChange={(e) => {
-                            updateOrderItem(
-                              product.id,
-                              "quantity",
-                              parseInt(e.target.value) || 0
-                            );
-                          }}
-                          className="h-10 text-center font-medium bg-blue-50 dark:bg-blue-950/20"
-                        />
-                      ) : (
-                        <div className="h-10 flex items-center justify-center rounded-md bg-muted/50 border text-xs text-muted-foreground italic">
-                          Não disponível para encomenda
+                    <div className="space-y-5 flex-1">
+                      {/* Inputs Grid */}
+                      <div className="grid grid-cols-2 gap-4">
+                        {/* Estoque */}
+                        <div className="space-y-2">
+                          <Label className="text-xs font-medium text-muted-foreground flex items-center gap-1.5">
+                            <Store className="h-3.5 w-3.5" />
+                            Estoque
+                          </Label>
+                          <Input
+                            type="number"
+                            min="0"
+                            placeholder="-"
+                            value={item?.stock || ""}
+                            onChange={(e) =>
+                              updateOrderItem(
+                                product.id,
+                                "stock",
+                                parseInt(e.target.value) || 0
+                              )
+                            }
+                            className="bg-muted/30 border-transparent focus:bg-background focus:border-primary text-center font-medium h-10"
+                          />
                         </div>
-                      )}
+
+                        {/* Produção Manual */}
+                        <div className="space-y-2">
+                          <Label className="text-xs font-medium text-muted-foreground flex items-center gap-1.5">
+                            <Package className="h-3.5 w-3.5" />
+                            Produzir
+                          </Label>
+                          <Input
+                            type="number"
+                            min="0"
+                            placeholder="-"
+                            value={item?.productionQuantity || ""}
+                            onChange={(e) =>
+                              updateOrderItem(
+                                product.id,
+                                "productionQuantity",
+                                parseInt(e.target.value) || 0
+                              )
+                            }
+                            className="bg-emerald-50/50 border-emerald-100 focus:border-emerald-500 focus:ring-emerald-500/20 text-center font-medium h-10 dark:bg-emerald-900/10 dark:border-emerald-900/30"
+                          />
+                        </div>
+                      </div>
+
+                      {/* Seção de Encomenda */}
+                      <div className="pt-2 space-y-3 border-t border-dashed">
+                        <div className="flex items-center justify-between">
+                          <Label className="text-xs font-medium text-muted-foreground flex items-center gap-1.5">
+                            <User className="h-3.5 w-3.5" />
+                            Encomenda
+                          </Label>
+                          {!product.allowOrders && (
+                            <span className="text-[10px] bg-muted px-2 py-0.5 rounded text-muted-foreground/60 italic">
+                              Indisponível
+                            </span>
+                          )}
+                        </div>
+
+                        {product.allowOrders ? (
+                          <div className="space-y-3">
+                            <Input
+                              type="number"
+                              min="0"
+                              placeholder="Qtd. Encomenda"
+                              value={item?.quantity || ""}
+                              onChange={(e) =>
+                                updateOrderItem(
+                                  product.id,
+                                  "quantity",
+                                  parseInt(e.target.value) || 0
+                                )
+                              }
+                              className={`h-10 text-center font-medium transition-all ${
+                                hasQuantity
+                                  ? "bg-primary/5 border-primary text-primary"
+                                  : "bg-muted/30 border-transparent focus:bg-background focus:border-primary"
+                              }`}
+                            />
+
+                            {hasQuantity && (
+                              <div className="bg-muted/40 rounded-lg p-3 space-y-2.5 animate-in slide-in-from-top-2 border border-primary/10">
+                                <div className="relative">
+                                  <User className="absolute left-3 top-1/2 -translate-y-1/2 h-3.5 w-3.5 text-muted-foreground" />
+                                  <Input
+                                    type="text"
+                                    placeholder="Nome do Cliente *"
+                                    className="h-9 text-xs pl-9 bg-background border-border/50"
+                                    value={item?.clientName || ""}
+                                    onChange={(e) =>
+                                      updateOrderItem(
+                                        product.id,
+                                        "clientName",
+                                        e.target.value
+                                      )
+                                    }
+                                  />
+                                </div>
+
+                                <div className="relative">
+                                  <CalendarDays className="absolute left-3 top-1/2 -translate-y-1/2 h-3.5 w-3.5 text-muted-foreground" />
+                                  <Input
+                                    type="date"
+                                    className="h-9 text-xs pl-9 bg-background border-border/50"
+                                    value={item?.deliveryDate || ""}
+                                    onChange={(e) =>
+                                      updateOrderItem(
+                                        product.id,
+                                        "deliveryDate",
+                                        e.target.value
+                                      )
+                                    }
+                                    min={new Date().toISOString().split("T")[0]}
+                                  />
+                                </div>
+
+                                <div className="relative">
+                                  <FileText className="absolute left-3 top-1/2 -translate-y-1/2 h-3.5 w-3.5 text-muted-foreground" />
+                                  <Input
+                                    type="text"
+                                    placeholder="Observação (opcional)"
+                                    className="h-9 text-xs pl-9 bg-background border-border/50"
+                                    value={item?.observation || ""}
+                                    onChange={(e) =>
+                                      updateOrderItem(
+                                        product.id,
+                                        "observation",
+                                        e.target.value
+                                      )
+                                    }
+                                  />
+                                </div>
+                              </div>
+                            )}
+                          </div>
+                        ) : (
+                          <div className="h-10 flex items-center justify-center bg-muted/20 rounded-md border border-dashed text-xs text-muted-foreground">
+                            Produto não aceita encomendas
+                          </div>
+                        )}
+                      </div>
                     </div>
-
-                    <div className="col-span-2 space-y-1.5">
-                      <Label className="text-xs text-muted-foreground font-medium">
-                        Pedidos para Produção
-                      </Label>
-                      <Input
-                        type="number"
-                        min="0"
-                        placeholder="0"
-                        value={item?.productionQuantity || ""}
-                        onChange={(e) => {
-                          updateOrderItem(
-                            product.id,
-                            "productionQuantity",
-                            parseInt(e.target.value) || 0
-                          );
-                        }}
-                        className="h-10 text-center font-medium bg-green-50 dark:bg-green-950/20"
-                        autoComplete="off"
-                        onFocus={(e) => e.target.select()}
-                      />
-                    </div>
-
-                    {/* Detalhes da Encomenda - Cards */}
-                    {product.allowOrders && hasQuantity && (
-                      <>
-                        <div className="col-span-2 pt-2 border-t">
-                          <p className="text-xs text-amber-600 dark:text-amber-400 font-medium mb-2">
-                            💡 Este item é uma Encomenda. Preencha os dados
-                            obrigatórios:
-                          </p>
-                        </div>
-
-                        <div className="col-span-2 space-y-1.5">
-                          <Label className="text-xs text-muted-foreground font-medium">
-                            Nome do Cliente *
-                          </Label>
-                          <Input
-                            type="text"
-                            placeholder="Nome do cliente"
-                            value={item?.clientName || ""}
-                            onChange={(e) => {
-                              updateOrderItem(
-                                product.id,
-                                "clientName",
-                                e.target.value
-                              );
-                            }}
-                            className="h-9"
-                            autoComplete="off"
-                          />
-                        </div>
-
-                        <div className="col-span-2 space-y-1.5">
-                          <Label className="text-xs text-muted-foreground font-medium">
-                            Data de Entrega *
-                          </Label>
-                          <Input
-                            type="date"
-                            value={item?.deliveryDate || ""}
-                            onChange={(e) => {
-                              updateOrderItem(
-                                product.id,
-                                "deliveryDate",
-                                e.target.value
-                              );
-                            }}
-                            className="h-9"
-                            min={new Date().toISOString().split("T")[0]}
-                          />
-                        </div>
-
-                        <div className="col-span-2 space-y-1.5">
-                          <Label className="text-xs text-muted-foreground font-medium">
-                            Observação (opcional)
-                          </Label>
-                          <Input
-                            type="text"
-                            placeholder="Ex: sem açúcar, decoração especial..."
-                            value={item?.observation || ""}
-                            onChange={(e) => {
-                              updateOrderItem(
-                                product.id,
-                                "observation",
-                                e.target.value
-                              );
-                            }}
-                            className="h-9"
-                            autoComplete="off"
-                          />
-                        </div>
-                      </>
-                    )}
                   </div>
-                </CardContent>
-              </Card>
-            );
-          })}
-        </div>
-      )}
+                </div>
+              );
+            })}
+          </div>
+        )}
+      </TooltipProvider>
 
-      {/* Botão Fixo de Revisar - Melhorado */}
+      {/* Botão Flutuante Moderno */}
       {stats.totalItemsWithData > 0 && (
-        <div className="fixed bottom-6 right-6 z-50 animate-in slide-in-from-bottom-4">
+        <div className="fixed bottom-8 right-8 z-50 animate-in slide-in-from-bottom-8 fade-in duration-500">
           <Button
             onClick={handleOpenSummary}
             size="lg"
-            className="shadow-2xl gap-3 h-16 px-8 text-lg font-semibold bg-gradient-to-r from-primary to-primary/90 hover:from-primary/90 hover:to-primary hover:shadow-xl transition-all hover:scale-105"
+            className="h-16 pl-6 pr-8 rounded-full shadow-2xl shadow-primary/30 bg-primary hover:bg-primary/90 transition-all hover:scale-105 hover:-translate-y-1 group"
           >
-            <div className="relative">
-              <ShoppingCart className="h-6 w-6" />
-              <Badge className="absolute -top-2 -right-2 h-5 w-5 flex items-center justify-center p-0 bg-red-500 text-[10px] border-2 border-white">
+            <div className="relative mr-4">
+              <div className="bg-white/20 p-2.5 rounded-full">
+                <ShoppingCart className="h-6 w-6 text-primary-foreground" />
+              </div>
+              <span className="absolute -top-1 -right-1 h-5 w-5 flex items-center justify-center bg-red-500 text-white text-[10px] font-bold rounded-full border-2 border-primary shadow-sm">
                 {stats.totalItemsWithData}
-              </Badge>
+              </span>
             </div>
             <div className="flex flex-col items-start">
-              <span>Revisar Pedido</span>
-              <span className="text-xs font-normal opacity-90">
-                {stats.totalEncomendas > 0 && stats.totalProduction > 0
-                  ? `${stats.totalEncomendas} encomendas • ${stats.totalProduction} produção`
-                  : stats.totalEncomendas > 0
-                    ? `${stats.totalEncomendas} encomendas`
-                    : stats.totalProduction > 0
-                      ? `${stats.totalProduction} para produção`
-                      : "Apenas vitrine"}
+              <span className="text-base font-bold tracking-wide text-primary-foreground">
+                Revisar Pedido
+              </span>
+              <span className="text-[10px] font-medium text-primary-foreground/80 uppercase tracking-wider group-hover:text-white transition-colors">
+                {stats.totalEncomendas > 0
+                  ? `${stats.totalEncomendas} encomendas`
+                  : "Pronto para enviar"}
               </span>
             </div>
           </Button>
