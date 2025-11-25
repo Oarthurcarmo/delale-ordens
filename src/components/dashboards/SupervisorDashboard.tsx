@@ -13,7 +13,7 @@ import {
   TableRow,
 } from "../ui/table";
 import { Badge } from "../ui/badge";
-import { Printer, ChevronDown, ChevronUp, Loader2 } from "lucide-react";
+import { Printer, ChevronDown, ChevronUp, LoaderCircle } from "lucide-react";
 import { ProductionStatusManager } from "../orders/ProductionStatusManager";
 import { ProductionStatusBadge } from "../orders/ProductionStatusBadge";
 import { Input } from "../ui/input";
@@ -154,7 +154,7 @@ export function SupervisorDashboard() {
         >
           {isPrinting ? (
             <>
-              <Loader2 className="mr-2 h-4 w-4 animate-spin" />
+              <LoaderCircle className="mr-2 h-4 w-4 animate-spin" />
               Preparando...
             </>
           ) : (

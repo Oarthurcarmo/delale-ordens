@@ -26,7 +26,7 @@ import {
   Printer,
   ChevronDown,
   ChevronUp,
-  Loader2,
+  LoaderCircle,
   FileDown,
 } from "lucide-react";
 import { ProductionStatusBadge } from "@/components/orders/ProductionStatusBadge";
@@ -40,7 +40,7 @@ const fetcher = async (url: string) => {
   return res.json();
 };
 
-interface OrderItem {
+export interface OrderItem {
   id: number;
   product: {
     name: string;
@@ -54,7 +54,7 @@ interface OrderItem {
   observation?: string;
 }
 
-interface Order {
+export interface Order {
   id: string;
   code: string;
   store: {
@@ -203,7 +203,7 @@ export default function OrdersOverviewPage() {
             >
               {isExportingPdf ? (
                 <>
-                  <Loader2 className="mr-2 h-4 w-4 animate-spin" />
+                  <LoaderCircle className="mr-2 h-4 w-4 animate-spin" />
                   Exportando...
                 </>
               ) : (
@@ -220,7 +220,7 @@ export default function OrdersOverviewPage() {
             >
               {isPrinting ? (
                 <>
-                  <Loader2 className="mr-2 h-4 w-4 animate-spin" />
+                  <LoaderCircle className="mr-2 h-4 w-4 animate-spin" />
                   Preparando...
                 </>
               ) : (
