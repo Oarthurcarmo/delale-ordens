@@ -12,7 +12,6 @@ import {
 } from "@/components/ui/card";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
-import Link from "next/link";
 
 export default function LoginPage() {
   const router = useRouter();
@@ -91,12 +90,6 @@ export default function LoginPage() {
               Entrar
             </Button>
           </form>
-          <div className="mt-4 text-center text-sm">
-            Não tem uma conta?{" "}
-            <Link href="/register" className="underline">
-              Cadastre-se
-            </Link>
-          </div>
         </CardContent>
       </Card>
     </div>
