@@ -93,14 +93,7 @@ export function OwnerDashboard() {
       icon: Package,
       color: "text-blue-600",
     },
-    {
-      title: "Solicitações de Edição",
-      description: "Aprove solicitações de edição de texto",
-      count: editRequests?.length || 0,
-      href: "/dashboard/edit-requests",
-      icon: FileEdit,
-      color: "text-yellow-600",
-    },
+    
     {
       title: "Edições de Itens",
       description: "Aprove edições de itens de pedidos",
