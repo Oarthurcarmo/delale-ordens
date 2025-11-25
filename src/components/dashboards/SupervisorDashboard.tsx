@@ -13,7 +13,13 @@ import {
   TableRow,
 } from "../ui/table";
 import { Badge } from "../ui/badge";
-import { Printer, ChevronDown, ChevronUp, LoaderCircle, FileDown } from "lucide-react";
+import {
+  Printer,
+  ChevronDown,
+  ChevronUp,
+  LoaderCircle,
+  FileDown,
+} from "lucide-react";
 import { ProductionStatusManager } from "../orders/ProductionStatusManager";
 import { ProductionStatusBadge } from "../orders/ProductionStatusBadge";
 import { ProductionPrintView } from "../orders/ProductionPrintView";
@@ -40,7 +46,7 @@ interface OrderItem {
   stock: number;
   quantity: number;
   productionQuantity?: number;
-  type: string;
+  type: "Vitrine" | "Encomenda";
   clientName?: string;
   deliveryDate?: string;
   observation?: string;
