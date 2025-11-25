@@ -43,6 +43,7 @@ const supervisorLinks = [
 
 const ownerLinks = [
   { href: "/dashboard", label: "Dashboard Geral", icon: BarChart3 },
+  { href: "/dashboard/create-order", label: "Novo Pedido", icon: Home },
   {
     href: "/dashboard/orders-overview",
     label: "Visão de Pedidos",
